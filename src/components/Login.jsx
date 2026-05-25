@@ -78,29 +78,47 @@ export default function Login() {
     <div className="min-h-screen flex" style={{ background: 'linear-gradient(135deg, #0f1f3d 0%, #1a3a5c 60%, #0d2137 100%)' }}>
 
       {/* Left panel */}
-      <div className="hidden lg:flex flex-col w-1/2 p-10 items-center justify-center">
-        <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-xl mb-6">
-          <img src={DCBA_LOGO} alt="DCBA" className="w-20 h-20 object-contain"
+      <div className="hidden lg:flex flex-col w-1/2 p-8 items-center justify-center overflow-y-auto">
+        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-xl mb-4">
+          <img src={DCBA_LOGO} alt="DCBA" className="w-16 h-16 object-contain"
             onError={e => { e.target.parentElement.innerHTML = '<span style="font-size:2rem;font-weight:800;color:#1a3a5c">DC</span>' }} />
         </div>
-        <h1 className="text-3xl font-bold text-white text-center">DWARKA COURT BAR ASSOCIATION</h1>
-        <p className="text-blue-300 mt-2 text-center">Member Self-Service Portal</p>
-        <div className="h-0.5 bg-gradient-to-r from-transparent via-yellow-500 to-transparent w-64 my-8" />
-        <div className="space-y-4 text-left w-full max-w-xs">
+        <h1 className="text-2xl font-bold text-white text-center">DWARKA COURT BAR ASSOCIATION</h1>
+        <p className="text-blue-300 mt-1 text-center text-sm">Member Self-Service Portal</p>
+        
+        <div className="h-0.5 bg-gradient-to-r from-transparent via-yellow-500 to-transparent w-64 my-5" />
+        
+        {/* Management Committee */}
+        <p className="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-4">Management Committee</p>
+        <div className="grid grid-cols-4 gap-3 w-full max-w-md">
           {[
-            { icon: User, text: 'View your membership profile' },
-            { icon: Shield, text: 'Check dues & payment history' },
-            { icon: Phone, text: 'File & track grievances' },
-            { icon: Calendar, text: 'View notices & circulars' },
-          ].map(({ icon: Icon, text }) => (
-            <div key={text} className="flex items-center gap-3 text-blue-200">
-              <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-                <Icon className="w-4 h-4" />
+            { name: 'AVNISH RANA', designation: 'PRESIDENT' },
+            { name: 'VIVEK DAGAR', designation: 'VICE PRESIDENT' },
+            { name: 'KARAN VEER TYAGI', designation: 'HONY. SECRETARY' },
+            { name: 'HEMANT VERMA', designation: 'ADDL. SECRETARY' },
+            { name: 'AJAY SAINI', designation: 'JOINT SECRETARY' },
+            { name: 'MAMTA YADAV', designation: 'TREASURER' },
+            { name: 'AMIT KR. SINGH', designation: 'LIBRARY INCHARGE' },
+            { name: 'ASHOK KR. JHA', designation: 'EXE. MEMBER' },
+            { name: 'NISHA SETHI SUDAN', designation: 'WOMEN EXE.' },
+            { name: 'RITU GUPTA', designation: 'LADY EXE.' },
+            { name: 'LATA NAUTIYAL', designation: 'EXE. MEMBER' },
+            { name: 'RAHUL TYAGI', designation: 'EXE. MEMBER' },
+            { name: 'YAMANDEEP SOLANKI', designation: 'EXE. MEMBER' },
+          ].map(m => (
+            <div key={m.name} className="text-center">
+              <div className="w-12 h-12 mx-auto mb-1 rounded-full border-2 border-yellow-500 flex items-center justify-center shadow-md"
+                style={{ background: 'linear-gradient(135deg, #1a3a5c, #2e5f8a)' }}>
+                <span className="text-yellow-400 font-bold text-xs">
+                  {m.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                </span>
               </div>
-              <p className="text-sm">{text}</p>
+              <p className="text-white text-xs font-bold leading-tight" style={{ fontSize: '0.6rem' }}>{m.name}</p>
+              <p className="text-yellow-400 leading-tight" style={{ fontSize: '0.55rem' }}>{m.designation}</p>
             </div>
           ))}
         </div>
+        <p className="text-blue-500 text-xs mt-3 italic">* Photographs will be updated on receipt</p>
       </div>
 
       {/* Right panel — Login form */}

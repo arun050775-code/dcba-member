@@ -54,13 +54,19 @@ export default function Dashboard() {
 
     setUploading(true)
     try {
-      const ext = file.name.split('.').pop()
-      const filename = `${member.member_no}.${ext}`
+      // Always save as member_no.png for consistency
+      const filename = `${member.member_no}.png`
       const { error } = await supabase.storage
         .from('member-photos')
-        .upload(filename, file, { upsert: true })
+        .upload(filename, file, { 
+          upsert: true,
+          contentType: 'image/png'
+        })
       if (error) throw error
-      setPhotoUrl(`${photoBaseUrl}/${filename}?t=${Date.now()}`)
+      
+      // Force refresh URL with timestamp
+      const newUrl = `${photoBaseUrl}/${filename}?t=${Date.now()}`
+      setPhotoUrl(newUrl)
       toast.success('Photo updated successfully!')
     } catch (err) {
       toast.error(err.message)

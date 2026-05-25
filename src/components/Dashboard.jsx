@@ -78,6 +78,40 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+
+      {/* News Ticker */}
+      {notices.length > 0 && (
+        <div style={{ background: '#C8960C' }} className="px-0 py-1.5 overflow-hidden">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 bg-[#1a3a5c] text-white text-xs font-bold px-3 py-0.5 flex items-center gap-1">
+              <Bell className="w-3 h-3" /> NOTICES
+            </div>
+            <div className="overflow-hidden flex-1">
+              <div className="ticker-wrap">
+                <p className="ticker-text text-xs font-semibold text-[#1a3a5c] whitespace-nowrap"
+                  style={{ animation: 'ticker 20s linear infinite' }}>
+                  {notices.map((n, i) => (
+                    <span key={n.id}>
+                      {n.is_pinned ? '📌 ' : '• '}{n.title}
+                      {i < notices.length - 1 ? '     ◆     ' : ''}
+                    </span>
+                  ))}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ticker CSS */}
+      <style>{`
+        @keyframes ticker {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+        .ticker-text { display: inline-block; }
+      `}</style>
+
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg, #1a3a5c, #2e5f8a)' }} className="px-4 pt-8 pb-16">
         <div className="max-w-lg mx-auto flex items-center justify-between mb-6">

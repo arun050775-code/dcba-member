@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMemberAuth } from '../context/MemberAuthContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { ArrowLeft, Bell, Pin, Paperclip, AlertTriangle, Calendar, FileText, Megaphone } from 'lucide-react'
+import { ArrowLeft, Bell, Pin, Paperclip, AlertTriangle, Calendar, FileText, Megaphone, Building2, Scale } from 'lucide-react'
 
 const CAT_CONFIG = {
   general: { label: 'General', color: 'bg-blue-100 text-blue-700', icon: Bell },
@@ -11,7 +11,19 @@ const CAT_CONFIG = {
   holiday: { label: 'Holiday', color: 'bg-green-100 text-green-700', icon: Calendar },
   election: { label: 'Election', color: 'bg-yellow-100 text-yellow-700', icon: Megaphone },
   circular: { label: 'Circular', color: 'bg-gray-100 text-gray-700', icon: FileText },
+  court_notice: { label: 'Court Notice', color: 'bg-blue-100 text-blue-800', icon: Building2 },
+  bar_council: { label: 'Bar Council', color: 'bg-indigo-100 text-indigo-700', icon: Scale },
 }
+
+const TABS = [
+  { id: 'all', label: 'All' },
+  { id: 'general', label: 'General' },
+  { id: 'urgent', label: 'Urgent' },
+  { id: 'meeting', label: 'Meeting' },
+  { id: 'circular', label: 'Circular' },
+  { id: 'court_notice', label: '🏛️ Court Notice' },
+  { id: 'bar_council', label: '⚖️ Bar Council' },
+]
 
 function formatDate(d) {
   if (!d) return '—'
@@ -24,6 +36,7 @@ export default function MemberNotices() {
   const [notices, setNotices] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
+  const [activeTab, setActiveTab] = useState('all')
 
   useEffect(() => { if (member) fetchNotices() }, [member])
 
@@ -36,6 +49,8 @@ export default function MemberNotices() {
     setLoading(false)
   }
 
+  const filtered = activeTab === 'all' ? notices : notices.filter(n => n.category === activeTab)
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div style={{ background: 'linear-gradient(135deg, #1a3a5c, #2e5f8a)' }} className="px-4 pt-8 pb-6">
@@ -47,15 +62,27 @@ export default function MemberNotices() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="bg-white border-b border-gray-200 overflow-x-auto">
+        <div className="flex px-4 py-1 gap-1 min-w-max">
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setActiveTab(t.id)}
+              className={`px-3 py-2 text-xs font-medium rounded-lg whitespace-nowrap transition-colors ${activeTab === t.id ? 'bg-blue-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="max-w-lg mx-auto px-4 py-4 pb-8 space-y-3">
         {loading ? (
           <p className="text-center text-gray-400 py-8">Loading...</p>
-        ) : notices.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="card p-8 text-center">
             <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm">No notices posted yet</p>
+            <p className="text-gray-500 text-sm">No notices in this category</p>
           </div>
-        ) : notices.map(n => {
+        ) : filtered.map(n => {
           const cat = CAT_CONFIG[n.category] || CAT_CONFIG.general
           const CatIcon = cat.icon
           return (
@@ -74,8 +101,13 @@ export default function MemberNotices() {
                   <p className="text-xs text-gray-500 mt-1 line-clamp-2">{n.content}</p>
                   <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
                     <span>{formatDate(n.created_at)}</span>
-                    {n.attachment_url && <span className="flex items-center gap-1 text-blue-500"><Paperclip className="w-3 h-3" /> Attachment</span>}
+                    {n.attachment_url && (
+                      <span className="flex items-center gap-1 text-blue-500">
+                        <Paperclip className="w-3 h-3" /> Attachment
+                      </span>
+                    )}
                   </div>
+                  <p className="text-xs text-blue-500 mt-1">Click here to view full notice →</p>
                 </div>
               </div>
             </div>

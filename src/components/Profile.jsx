@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Camera, Save } from 'lucide-react'
+import { getPhotoUrl, handlePhotoError } from '../utils/photoUrl'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 function formatDate(d) {
@@ -17,9 +18,7 @@ export default function Profile() {
   const navigate = useNavigate()
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [photoUrl, setPhotoUrl] = useState(
-    `https://xalbjrmridjgdpguobdx.supabase.co/storage/v1/object/public/member-photos/${member?.member_no}.png`
-  )
+  const [photoUrl, setPhotoUrl] = useState(getPhotoUrl(member?.member_no || ''))
   const [editable, setEditable] = useState({
     residential: member?.address || '',
     chamber: member?.chamber || '',
@@ -91,10 +90,7 @@ export default function Profile() {
             <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-yellow-400 shadow-lg">
               <img src={photoUrl} alt={member?.member_name}
                 className="w-full h-full object-cover"
-                onError={e => {
-                  e.target.style.display = 'none'
-                  e.target.parentElement.innerHTML = `<div style="width:100%;height:100%;background:#1a3a5c;display:flex;align-items:center;justify-content:center;color:#f5c842;font-weight:800;font-size:1.5rem">${member?.member_name?.split(' ').map(n=>n[0]).join('').slice(0,2)}</div>`
-                }}
+                onError={e => handlePhotoError(e, member?.member_no, member?.member_name?.split(' ').map(n=>n[0]).join('').slice(0,2))}
               />
             </div>
             <label className="absolute bottom-0 right-0 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center cursor-pointer shadow-md">

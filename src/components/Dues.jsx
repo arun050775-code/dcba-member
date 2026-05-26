@@ -87,8 +87,8 @@ export default function Dues() {
             </div>
           </div>
 
-          {/* Annual accrual info */}
-          {monthsAccrued > 0 && (
+          {/* Annual accrual info - only show if outstanding */}
+          {hasOutstanding && monthsAccrued > 0 && (
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-3">
               <p className="text-xs font-semibold text-orange-800 mb-1">Annual Fee Accrual</p>
               <p className="text-xs text-orange-700">
@@ -97,21 +97,35 @@ export default function Dues() {
             </div>
           )}
 
-          {/* Payment options */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => toast('Online payment coming soon! Please visit office.', { icon: 'ℹ️' })}
-              className="bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold text-center">
-              Pay till date<br />
-              <span className="text-xs font-normal">₹{accruedAmount || 0}</span>
-            </button>
-            <button
-              onClick={() => toast('Online payment coming soon! Please visit office.', { icon: 'ℹ️' })}
-              className="bg-[#1a3a5c] text-white rounded-xl py-2.5 text-sm font-semibold text-center">
-              Pay full year<br />
-              <span className="text-xs font-normal">₹{fullYearAmount}</span>
-            </button>
-          </div>
+          {/* Payment options - only show if outstanding */}
+          {hasOutstanding && (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => toast('Online payment coming soon! Please visit office.', { icon: 'ℹ️' })}
+                className="bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold text-center">
+                Pay till date<br />
+                <span className="text-xs font-normal">₹{accruedAmount || 0}</span>
+              </button>
+              <button
+                onClick={() => toast('Online payment coming soon! Please visit office.', { icon: 'ℹ️' })}
+                className="bg-[#1a3a5c] text-white rounded-xl py-2.5 text-sm font-semibold text-center">
+                Pay full year<br />
+                <span className="text-xs font-normal">₹{fullYearAmount}</span>
+              </button>
+            </div>
+          )}
+
+          {/* Advance payment option - only when dues are clear */}
+          {!hasOutstanding && (
+            <div className="mt-2">
+              <button
+                onClick={() => toast('Online payment coming soon! Please visit office.', { icon: 'ℹ️' })}
+                className="w-full bg-green-600 text-white rounded-xl py-2.5 text-sm font-semibold text-center">
+                Pay in Advance for Next Year<br />
+                <span className="text-xs font-normal">₹{fullYearAmount} — valid till {nextDueDate ? formatDate(new Date(nextDueDate.getFullYear()+1, nextDueDate.getMonth(), nextDueDate.getDate())) : '—'}</span>
+              </button>
+            </div>
+          )}
 
           <p className="text-xs text-gray-400 text-center mt-2">
             Online payment coming soon — visit DCBA office to pay now

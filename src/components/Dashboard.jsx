@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { useMemberAuth } from '../context/MemberAuthContext'
 import { supabase } from '../supabaseClient'
 import { useNavigate } from 'react-router-dom'
-import { User, IndianRupee, Bell, AlertCircle, FileText, ChevronRight, Camera, LogOut } from 'lucide-react'
+import { User, IndianRupee, Bell, AlertCircle, FileText, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+const DCBA_LOGO = 'https://www.dwarkacourtbarassociation.com/images/logo.png'
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 function formatDate(d) {
@@ -18,16 +19,12 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [notices, setNotices] = useState([])
   const [grievances, setGrievances] = useState([])
-  const [uploading, setUploading] = useState(false)
-  const [photoUrl, setPhotoUrl] = useState(null)
+  const [selectedNotice, setSelectedNotice] = useState(null)
 
-  const photoBaseUrl = 'https://xalbjrmridjgdpguobdx.supabase.co/storage/v1/object/public/member-photos'
+  const photoUrl = `https://xalbjrmridjgdpguobdx.supabase.co/storage/v1/object/public/member-photos/${member?.member_no}.png`
 
   useEffect(() => {
-    if (member) {
-      fetchData()
-      setPhotoUrl(`${photoBaseUrl}/${member.member_no}.png`)
-    }
+    if (member) fetchData()
   }, [member])
 
   async function fetchData() {
@@ -47,33 +44,6 @@ export default function Dashboard() {
     setGrievances(grievanceData || [])
   }
 
-  async function handlePhotoUpload(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    if (file.size > 2 * 1024 * 1024) return toast.error('Photo must be under 2MB')
-
-    setUploading(true)
-    try {
-      // Always save as member_no.png for consistency
-      const filename = `${member.member_no}.png`
-      const { error } = await supabase.storage
-        .from('member-photos')
-        .upload(filename, file, { 
-          upsert: true,
-          contentType: 'image/png'
-        })
-      if (error) throw error
-      
-      // Force refresh URL with timestamp
-      const newUrl = `${photoBaseUrl}/${filename}?t=${Date.now()}`
-      setPhotoUrl(newUrl)
-      toast.success('Photo updated successfully!')
-    } catch (err) {
-      toast.error(err.message)
-    }
-    setUploading(false)
-  }
-
   const hasOutstanding = Number(member?.outstanding_fees) > 0
   const statusColor = {
     open: 'bg-red-100 text-red-700',
@@ -82,59 +52,71 @@ export default function Dashboard() {
     closed: 'bg-gray-100 text-gray-600',
   }
 
+  const tickerText = notices.map(n => n.title).join('     ◆     ')
+
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* News Ticker */}
-      {notices.length > 0 && (
-        <div style={{ background: '#C8960C' }} className="px-0 py-1.5 overflow-hidden">
-          <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 bg-[#1a3a5c] text-white text-xs font-bold px-3 py-0.5 flex items-center gap-1">
-              <Bell className="w-3 h-3" /> NOTICES
-            </div>
-            <div className="overflow-hidden flex-1">
-              <div className="ticker-wrap">
-                <p className="ticker-text text-xs font-semibold text-[#1a3a5c] whitespace-nowrap"
-                  style={{ animation: 'ticker 20s linear infinite' }}>
-                  {notices.map((n, i) => (
-                    <span key={n.id}>
-                      {n.is_pinned ? '📌 ' : '• '}{n.title}
-                      {i < notices.length - 1 ? '     ◆     ' : ''}
-                    </span>
-                  ))}
-                </p>
+      {/* Header */}
+      <div style={{ background: 'linear-gradient(135deg, #1a3a5c, #2e5f8a)' }} className="px-4 pt-6 pb-16">
+        <div className="max-w-lg mx-auto">
+
+          {/* Top row — Logo + Logout */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md">
+                <img src={DCBA_LOGO} alt="DCBA" className="w-8 h-8 object-contain"
+                  onError={e => { e.target.parentElement.innerHTML = '<span style="font-size:0.7rem;font-weight:800;color:#1a3a5c">DC</span>' }} />
+              </div>
+              <div>
+                <p className="text-blue-300 text-xs uppercase tracking-widest">DCBA Member Portal</p>
+                <h1 className="text-white font-bold text-lg">Welcome, {member?.member_name?.split(' ')[0]}!</h1>
               </div>
             </div>
+            <button onClick={() => { signOut(); navigate('/') }}
+              className="bg-white/10 text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-white/20 flex items-center gap-1">
+              Logout →
+            </button>
           </div>
-        </div>
-      )}
 
-      {/* Ticker CSS */}
-      <style>{`
-        @keyframes ticker {
-          0% { transform: translateX(100%); }
-          100% { transform: translateX(-100%); }
-        }
-        .ticker-text { display: inline-block; }
-      `}</style>
+          {/* News Ticker */}
+          {notices.length > 0 && (
+            <div style={{ background: '#C8960C' }} className="rounded-xl overflow-hidden mb-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0 bg-[#1a3a5c] text-white text-xs font-bold px-3 py-1.5 flex items-center gap-1">
+                  <Bell className="w-3 h-3" /> NOTICES
+                </div>
+                <div className="overflow-hidden flex-1 px-2">
+                  <p className="text-xs font-semibold text-[#1a3a5c] whitespace-nowrap"
+                    style={{ animation: 'ticker 16.7s linear infinite', display: 'inline-block' }}>
+                    {notices.map((n, i) => (
+                      <span key={n.id}>
+                        <span className="cursor-pointer hover:underline"
+                          onClick={() => setSelectedNotice(n)}>
+                          {n.is_pinned ? '📌 ' : '• '}{n.title}
+                          <span className="text-[#1a3a5c] font-normal"> — Click here to view full notice</span>
+                        </span>
+                        {i < notices.length - 1 ? '     ◆     ' : ''}
+                      </span>
+                    ))}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
-      {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #1a3a5c, #2e5f8a)' }} className="px-4 pt-8 pb-16">
-        <div className="max-w-lg mx-auto flex items-center justify-between mb-6">
-          <div>
-            <p className="text-blue-300 text-xs uppercase tracking-widest">DCBA Member Portal</p>
-            <h1 className="text-white font-bold text-lg">Welcome, {member?.member_name?.split(' ')[0]}!</h1>
-          </div>
-          <button onClick={() => { signOut(); navigate('/') }}
-            className="p-2 bg-white/10 rounded-xl text-white hover:bg-white/20">
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
+          {/* Ticker CSS */}
+          <style>{`
+            @keyframes ticker {
+              0% { transform: translateX(100%); }
+              100% { transform: translateX(-100%); }
+            }
+          `}</style>
 
-        {/* Profile card */}
-        <div className="max-w-lg mx-auto bg-white/10 backdrop-blur rounded-2xl p-4 flex items-center gap-4">
-          <div className="relative flex-shrink-0">
-            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-yellow-400">
+          {/* Profile card */}
+          <div className="bg-white/10 backdrop-blur rounded-2xl p-4 flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-yellow-400 flex-shrink-0 cursor-pointer"
+              onClick={() => navigate('/profile')}>
               <img src={photoUrl} alt={member?.member_name}
                 className="w-full h-full object-cover"
                 onError={e => {
@@ -143,23 +125,13 @@ export default function Dashboard() {
                 }}
               />
             </div>
-            <label className="absolute -bottom-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center cursor-pointer shadow-md">
-              {uploading ? (
-                <div className="w-3 h-3 border-2 border-blue-900 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Camera className="w-3 h-3 text-blue-900" />
-              )}
-              <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-            </label>
-          </div>
-          <div className="flex-1">
-            <p className="text-white font-bold">{member?.member_name}</p>
-            <p className="text-blue-200 text-xs">{member?.member_no}</p>
-            <p className="text-blue-300 text-xs">{member?.enrollment_no}</p>
-          </div>
-          <div className="text-right">
-            <span className={`text-xs px-2 py-1 rounded-full font-medium ${member?.status === 'active' ? 'bg-green-400/20 text-green-300' : 'bg-red-400/20 text-red-300'}`}>
-              {member?.status === 'active' ? '✓ Active' : 'Inactive'}
+            <div className="flex-1">
+              <p className="text-white font-bold">{member?.member_name}</p>
+              <p className="text-blue-200 text-xs">{member?.member_no}</p>
+              <p className="text-blue-300 text-xs">{member?.enrollment_no}</p>
+            </div>
+            <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-400/20 text-green-300">
+              ✓ Active
             </span>
           </div>
         </div>
@@ -167,7 +139,7 @@ export default function Dashboard() {
 
       <div className="max-w-lg mx-auto px-4 -mt-8 pb-8 space-y-4">
 
-        {/* Fee Status Card */}
+        {/* Fee Status */}
         <div className={`card p-4 ${hasOutstanding ? 'border-l-4 border-l-red-500' : 'border-l-4 border-l-green-500'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -181,12 +153,10 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
-            {hasOutstanding && (
-              <button onClick={() => navigate('/dues')}
-                className="text-xs bg-red-500 text-white px-3 py-1.5 rounded-lg font-medium">
-                Pay Now
-              </button>
-            )}
+            <button onClick={() => navigate('/dues')}
+              className="text-xs bg-blue-700 text-white px-3 py-1.5 rounded-lg font-medium">
+              View →
+            </button>
           </div>
         </div>
 
@@ -197,6 +167,7 @@ export default function Dashboard() {
             { label: 'Dues & Fees', icon: IndianRupee, path: '/dues', color: 'bg-green-50 text-green-700' },
             { label: 'Grievances', icon: AlertCircle, path: '/grievances', color: 'bg-red-50 text-red-700' },
             { label: 'Notice Board', icon: Bell, path: '/notices', color: 'bg-yellow-50 text-yellow-700' },
+            { label: 'Certificate / I-Card', icon: FileText, path: '/certificate', color: 'bg-purple-50 text-purple-700' },
           ].map(item => {
             const Icon = item.icon
             return (
@@ -222,10 +193,12 @@ export default function Dashboard() {
           {notices.length === 0 ? (
             <p className="text-xs text-gray-400 text-center py-4">No notices yet</p>
           ) : notices.map(n => (
-            <div key={n.id} className="flex items-start gap-3 py-2.5 border-b last:border-0">
+            <div key={n.id} className="flex items-start gap-3 py-2.5 border-b last:border-0 cursor-pointer hover:bg-gray-50 rounded-lg px-1"
+              onClick={() => setSelectedNotice(n)}>
               <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-gray-800">{n.title}</p>
+                <p className="text-xs text-blue-500 mt-0.5">Click here to view full notice</p>
                 <p className="text-xs text-gray-400">{formatDate(n.created_at)}</p>
               </div>
               {n.is_pinned && <span className="text-xs">📌</span>}
@@ -254,30 +227,38 @@ export default function Dashboard() {
               </span>
             </div>
           ))}
-          <button onClick={() => navigate('/grievances/new')}
+          <button onClick={() => navigate('/grievances')}
             className="mt-3 w-full text-center text-xs text-red-600 font-medium border border-red-200 rounded-xl py-2 hover:bg-red-50">
             + File New Grievance
           </button>
         </div>
+      </div>
 
-        {/* Certificate Request */}
-        <div className="card p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-              <FileText className="w-5 h-5 text-purple-600" />
+      {/* Notice Detail Modal */}
+      {selectedNotice && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="bg-white rounded-t-3xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b bg-blue-50">
+              <h3 className="font-bold text-gray-800">{selectedNotice.title}</h3>
+              <button onClick={() => setSelectedNotice(null)} className="p-2 hover:bg-gray-100 rounded-xl">✕</button>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-800">Membership Certificate</p>
-              <p className="text-xs text-gray-400">Request physical certificate</p>
+            <div className="px-6 py-4 space-y-4">
+              <div className="flex items-center gap-3 text-xs text-gray-500">
+                <span>📅 {formatDate(selectedNotice.created_at)}</span>
+                {selectedNotice.posted_by_name && <span>👤 {selectedNotice.posted_by_name}</span>}
+              </div>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{selectedNotice.content}</p>
+              {selectedNotice.attachment_url && (
+                <a href={selectedNotice.attachment_url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl p-3">
+                  <span className="text-blue-600 text-sm font-medium">📎 {selectedNotice.attachment_name || 'View Attachment'}</span>
+                  <span className="text-xs text-blue-400 ml-auto">Click to open →</span>
+                </a>
+              )}
             </div>
           </div>
-          <button onClick={() => navigate('/certificate')}
-            className="text-purple-600 hover:bg-purple-50 p-2 rounded-xl">
-            <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
-
-      </div>
+      )}
     </div>
   )
 }

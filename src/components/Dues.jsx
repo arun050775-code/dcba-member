@@ -45,15 +45,27 @@ export default function Dues() {
     setLoading(false)
   }
 
-  // Calculate accrued dues
+  // Calculate accrued dues - only current year
   const membershipDate = member?.membership_date ? new Date(member.membership_date) : null
-  const lastPaidDate = member?.last_fee_paid_date ? new Date(member.last_fee_paid_date) : membershipDate
   const today = new Date()
+  
+  // Next due date calculation
   const nextDueDate = getNextDueDate(member?.membership_date)
-
-  const monthsAccrued = lastPaidDate ? Math.max(0, getMonthsDiff(lastPaidDate, today)) : 0
-  const accruedAmount = monthsAccrued * MONTHLY_RATE
-  const fullYearAmount = 600
+  
+  // Last payment date - if annual fee paid, use next due date as base
+  // If not paid, calculate from membership anniversary
+  let monthsAccrued = 0
+  let accruedAmount = 0
+  
+  if (!member?.annual_fee_paid && membershipDate) {
+    // Find last anniversary date
+    const lastAnniversary = new Date(today.getFullYear(), membershipDate.getMonth(), membershipDate.getDate())
+    if (lastAnniversary > today) lastAnniversary.setFullYear(today.getFullYear() - 1)
+    
+    // Months from last anniversary to today (max 12)
+    monthsAccrued = Math.min(12, Math.max(0, getMonthsDiff(lastAnniversary, today)))
+    accruedAmount = monthsAccrued * MONTHLY_RATE
+  }
 
   const hasOutstanding = Number(member?.outstanding_fees) > 0
 

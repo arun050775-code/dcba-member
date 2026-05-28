@@ -6,7 +6,9 @@ import { supabase } from '../supabaseClient'
 import toast from 'react-hot-toast'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-const MONTHLY_RATE = 50 // ₹50 per month
+const ANNUAL_FEE = 600
+const MONTHLY_RATE = 50
+const FULL_YEAR_MONTHS = 12
 
 function formatDate(d) {
   if (!d) return '—'
@@ -27,6 +29,21 @@ function getNextDueDate(membershipDate) {
   return nextDue
 }
 
+// Compute months accrued since last payment (or membership date if never paid)
+function computeAccrued(member) {
+  const today = new Date()
+  // Use last_fee_paid_date if available, else membership_date
+  const baseDate = member.last_fee_paid_date
+    ? new Date(member.last_fee_paid_date)
+    : member.membership_date
+      ? new Date(member.membership_date)
+      : null
+
+  if (!baseDate) return { months: 0, amount: 0 }
+  const months = Math.max(0, getMonthsDiff(baseDate, today))
+  return { months, amount: months * MONTHLY_RATE }
+}
+
 export default function Dues() {
   const { member } = useMemberAuth()
   const navigate = useNavigate()
@@ -45,29 +62,12 @@ export default function Dues() {
     setLoading(false)
   }
 
-  // Calculate accrued dues - only current year
-  const membershipDate = member?.membership_date ? new Date(member.membership_date) : null
-  const today = new Date()
-  
-  // Next due date calculation
+  // Calculate accrued dues using last_fee_paid_date
+  const { months: monthsAccrued, amount: accruedAmount } = computeAccrued(member)
+  const fullYearAmount = ANNUAL_FEE
   const nextDueDate = getNextDueDate(member?.membership_date)
-  
-  // Last payment date - if annual fee paid, use next due date as base
-  // If not paid, calculate from membership anniversary
-  let monthsAccrued = 0
-  let accruedAmount = 0
-  
-  if (!member?.annual_fee_paid && membershipDate) {
-    // Find last anniversary date
-    const lastAnniversary = new Date(today.getFullYear(), membershipDate.getMonth(), membershipDate.getDate())
-    if (lastAnniversary > today) lastAnniversary.setFullYear(today.getFullYear() - 1)
-    
-    // Months from last anniversary to today (max 12)
-    monthsAccrued = Math.min(12, Math.max(0, getMonthsDiff(lastAnniversary, today)))
-    accruedAmount = monthsAccrued * MONTHLY_RATE
-  }
-
-  const hasOutstanding = Number(member?.outstanding_fees) > 0
+  const hasOutstanding = Number(member?.outstanding_fees) > 0 || accruedAmount > 0
+  const totalDue = Math.max(Number(member?.outstanding_fees || 0), accruedAmount)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -90,22 +90,25 @@ export default function Dues() {
             </div>
             <div>
               <p className="font-bold text-gray-800">
-                {hasOutstanding ? 'Outstanding Dues' : `All dues clear ✓ upto ${nextDueDate ? formatDate(nextDueDate) : '—'}`}
+                {hasOutstanding ? 'Outstanding Dues' : `All dues clear ✓`}
               </p>
               {hasOutstanding
-                ? <p className="text-2xl font-bold text-red-600">₹{Number(member?.outstanding_fees).toLocaleString('en-IN')}</p>
+                ? <p className="text-2xl font-bold text-red-600">₹{totalDue.toLocaleString('en-IN')}</p>
                 : <p className="text-sm text-green-600">Next renewal: {nextDueDate ? formatDate(nextDueDate) : '—'}</p>
               }
             </div>
           </div>
 
-          {/* Annual accrual info - only show if outstanding */}
+          {/* Accrual info */}
           {hasOutstanding && monthsAccrued > 0 && (
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-3">
               <p className="text-xs font-semibold text-orange-800 mb-1">Annual Fee Accrual</p>
               <p className="text-xs text-orange-700">
-                ₹50/month × {monthsAccrued} month{monthsAccrued > 1 ? 's' : ''} = <strong>₹{accruedAmount}</strong> accrued
+                ₹50/month × {monthsAccrued} month{monthsAccrued > 1 ? 's' : ''} = <strong>₹{accruedAmount}</strong>
               </p>
+              {member?.last_fee_paid_date && (
+                <p className="text-xs text-orange-600 mt-1">Last paid: {formatDate(member.last_fee_paid_date)}</p>
+              )}
             </div>
           )}
 
@@ -116,7 +119,7 @@ export default function Dues() {
                 onClick={() => toast('Online payment coming soon! Please visit office.', { icon: 'ℹ️' })}
                 className="bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold text-center">
                 Pay till date<br />
-                <span className="text-xs font-normal">₹{accruedAmount || 0}</span>
+                <span className="text-xs font-normal">₹{accruedAmount || totalDue}</span>
               </button>
               <button
                 onClick={() => toast('Online payment coming soon! Please visit office.', { icon: 'ℹ️' })}

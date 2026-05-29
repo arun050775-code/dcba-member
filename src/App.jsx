@@ -7,6 +7,7 @@ import Profile from './components/Profile'
 import Dues from './components/Dues'
 import MemberGrievances from './components/MemberGrievances'
 import MemberNotices from './components/MemberNotices'
+import MemberRequests from './components/MemberRequests'
 import Certificate from './components/Certificate'
 
 function PrivateRoute({ children }) {
@@ -28,6 +29,7 @@ function AppRoutes() {
       <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
       <Route path="/dues" element={<PrivateRoute><Dues /></PrivateRoute>} />
       <Route path="/grievances" element={<PrivateRoute><MemberGrievances /></PrivateRoute>} />
+      <Route path="/requests" element={<PrivateRoute><MemberRequests /></PrivateRoute>} />
       <Route path="/notices" element={<PrivateRoute><MemberNotices /></PrivateRoute>} />
       <Route path="/certificate" element={<PrivateRoute><Certificate /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />

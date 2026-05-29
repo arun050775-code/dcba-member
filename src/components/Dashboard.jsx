@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMemberAuth } from '../context/MemberAuthContext'
 import { supabase } from '../supabaseClient'
 import { useNavigate } from 'react-router-dom'
-import { User, IndianRupee, Bell, AlertCircle, FileText, Camera } from 'lucide-react'
+import { User, IndianRupee, Bell, AlertCircle, FileText, Camera, ClipboardList } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getPhotoUrl, handlePhotoError } from '../utils/photoUrl'
 
@@ -85,6 +85,7 @@ export default function Dashboard() {
     { label: 'Update Contact', path: '/profile', icon: User, color: 'text-blue-600' },
     { label: 'Dues & Fees', path: '/dues', icon: IndianRupee, color: 'text-green-600' },
     { label: 'File Grievance', path: '/grievances', icon: AlertCircle, color: 'text-red-600' },
+    { label: 'My Requests', path: '/requests', icon: ClipboardList, color: 'text-orange-600' },
     { label: 'Notice Board', path: '/notices', icon: Bell, color: 'text-yellow-600' },
     { label: 'Certificate / I-Card', path: '/certificate', icon: FileText, color: 'text-purple-600' },
   ]
@@ -237,6 +238,7 @@ export default function Dashboard() {
                 { label: 'My Profile', desc: 'View & update details', icon: User, path: '/profile', color: 'bg-blue-50 border-blue-200 text-blue-700' },
                 { label: 'Dues & Fees', desc: 'Check & pay fees', icon: IndianRupee, path: '/dues', color: 'bg-green-50 border-green-200 text-green-700' },
                 { label: 'Grievances', desc: 'File & track', icon: AlertCircle, path: '/grievances', color: 'bg-red-50 border-red-200 text-red-700' },
+                { label: 'Requests', desc: 'Letter, I-Card, Seat...', icon: ClipboardList, path: '/requests', color: 'bg-orange-50 border-orange-200 text-orange-700' },
                 { label: 'Notice Board', desc: 'Circulars & notices', icon: Bell, path: '/notices', color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
                 { label: 'Certificate', desc: 'Request certificate', icon: FileText, path: '/certificate', color: 'bg-purple-50 border-purple-200 text-purple-700' },
               ].map(item => {

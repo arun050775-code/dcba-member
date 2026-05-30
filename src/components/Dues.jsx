@@ -62,12 +62,9 @@ export default function Dues() {
     setLoading(false)
   }
 
-  // Calculate accrued dues using last_fee_paid_date
-  const { months: monthsAccrued, amount: accruedAmount } = computeAccrued(member)
-  const fullYearAmount = ANNUAL_FEE
+  const totalDue = Number(member?.outstanding_fees || 0)
+  const hasOutstanding = totalDue > 0
   const nextDueDate = getNextDueDate(member?.membership_date)
-  const hasOutstanding = Number(member?.outstanding_fees) > 0 || accruedAmount > 0
-  const totalDue = Math.max(Number(member?.outstanding_fees || 0), accruedAmount)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -99,18 +96,7 @@ export default function Dues() {
             </div>
           </div>
 
-          {/* Accrual info */}
-          {hasOutstanding && monthsAccrued > 0 && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-3">
-              <p className="text-xs font-semibold text-orange-800 mb-1">Annual Fee Accrual</p>
-              <p className="text-xs text-orange-700">
-                ₹50/month × {monthsAccrued} month{monthsAccrued > 1 ? 's' : ''} = <strong>₹{accruedAmount}</strong>
-              </p>
-              {member?.last_fee_paid_date && (
-                <p className="text-xs text-orange-600 mt-1">Last paid: {formatDate(member.last_fee_paid_date)}</p>
-              )}
-            </div>
-          )}
+          {/* Accrual info — removed, using database outstanding_fees directly */}
 
           {/* Payment options - only show if outstanding */}
           {hasOutstanding && (
@@ -118,14 +104,14 @@ export default function Dues() {
               <button
                 onClick={() => toast('Online payment coming soon! Please visit office.', { icon: 'ℹ️' })}
                 className="bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold text-center">
-                Pay till date<br />
-                <span className="text-xs font-normal">₹{accruedAmount || totalDue}</span>
+                Pay Outstanding<br />
+                <span className="text-xs font-normal">₹{totalDue.toLocaleString('en-IN')}</span>
               </button>
               <button
                 onClick={() => toast('Online payment coming soon! Please visit office.', { icon: 'ℹ️' })}
                 className="bg-[#1a3a5c] text-white rounded-xl py-2.5 text-sm font-semibold text-center">
-                Pay full year<br />
-                <span className="text-xs font-normal">₹{fullYearAmount}</span>
+                Pay Full Year<br />
+                <span className="text-xs font-normal">₹{ANNUAL_FEE}</span>
               </button>
             </div>
           )}

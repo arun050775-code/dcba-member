@@ -317,6 +317,26 @@ function NewRequestModal({ member, preSelectedType, onClose, onSuccess }) {
       const { error } = await supabase.from('dcba_member_requests').insert(payload)
       if (error) throw error
 
+      // If icard paid via Razorpay — record in razorpay_payments bucket
+      if (type === 'icard' && icardFeePaid && razorpayPaymentId) {
+        const today = new Date().toISOString().split('T')[0]
+        const razorpayFee = Math.round(ICARD_FEE * 0.02 * 100) / 100
+        await supabase.from('dcba_razorpay_payments').insert({
+          org_id: member.org_id,
+          member_id: member.id,
+          razorpay_payment_id: razorpayPaymentId,
+          amount: ICARD_FEE,
+          payment_date: today,
+          payment_for: 'icard',
+          member_no: member.member_no,
+          member_name: member.member_name,
+          status: 'captured',
+          fee_amount: razorpayFee,
+          net_amount: ICARD_FEE - razorpayFee,
+          settled: false,
+        })
+      }
+
       toast.success(`Request submitted! Ref: ${requestNo}`)
       onSuccess()
     } catch (err) {

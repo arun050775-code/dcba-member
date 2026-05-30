@@ -135,8 +135,8 @@ export default function Dues() {
         .eq('member_id', member.id)
       const receiptNo = `DCBA/ONL/${fy}/${String((count || 0) + 1).padStart(4, '0')}`
 
-      // Record payment in dcba_member_fees
-      const { error: feeError } = await supabase.from('dcba_member_fees').insert({
+      // 1. Record in dcba_member_fees
+      const { data: feeData, error: feeError } = await supabase.from('dcba_member_fees').insert({
         member_id: member.id,
         org_id: member.org_id,
         fee_type: 'annual',
@@ -150,10 +150,28 @@ export default function Dues() {
         razorpay_signature: response.razorpay_signature || null,
         status: 'completed',
         description: `Annual Subscription — ${label}`,
-      })
+      }).select().single()
       if (feeError) throw feeError
 
-      // Update member: clear outstanding, update last paid date
+      // 2. Record in dcba_razorpay_payments (daily bucket)
+      const razorpayFee = Math.round(amount * 0.02 * 100) / 100
+      await supabase.from('dcba_razorpay_payments').insert({
+        org_id: member.org_id,
+        member_id: member.id,
+        member_fee_id: feeData?.id || null,
+        razorpay_payment_id: response.razorpay_payment_id,
+        amount: amount,
+        payment_date: today,
+        payment_for: 'annual',
+        member_no: member.member_no,
+        member_name: member.member_name,
+        status: 'captured',
+        fee_amount: razorpayFee,
+        net_amount: amount - razorpayFee,
+        settled: false,
+      })
+
+      // 3. Update member: clear outstanding, update last paid date
       const newOutstanding = Math.max(0, totalDue - amount)
       const { error: memberError } = await supabase.from('dcba_members').update({
         outstanding_fees: newOutstanding,
@@ -162,7 +180,7 @@ export default function Dues() {
       }).eq('id', member.id)
       if (memberError) throw memberError
 
-      // Update local session
+      // 4. Update local session
       signIn({ ...member, outstanding_fees: newOutstanding, last_fee_paid_date: today, annual_fee_paid: true })
 
       toast.success(`Payment successful! ₹${amount} paid. Receipt: ${receiptNo}`, { duration: 5000 })

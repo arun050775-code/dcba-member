@@ -82,22 +82,6 @@ export default function Certificate() {
             </div>
 
             <div>
-              <label className="label">Request Type *</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setRequestType('certificate')}
-                  className={`p-3 rounded-xl border-2 text-center transition-all ${requestType === 'certificate' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 text-gray-500'}`}>
-                  <span className="text-2xl">📄</span>
-                  <p className="text-sm font-medium mt-1">Membership Certificate</p>
-                </button>
-                <button onClick={() => setRequestType('icard')}
-                  className={`p-3 rounded-xl border-2 text-center transition-all ${requestType === 'icard' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500'}`}>
-                  <span className="text-2xl">🪪</span>
-                  <p className="text-sm font-medium mt-1">I-Card</p>
-                </button>
-              </div>
-            </div>
-
-            <div>
               <label className="label">Purpose / Reason *</label>
               <textarea className="input h-24 resize-none" value={purpose}
                 onChange={e => setPurpose(e.target.value)}

@@ -21,6 +21,7 @@ export default function Profile() {
   const [photoUrl, setPhotoUrl] = useState(getPhotoUrl(member?.member_no || ''))
   const [editable, setEditable] = useState({
     residential: member?.address || '',
+    office: member?.office || '',
     mobile: member?.mobile || '',
     email: member?.email || '',
   })
@@ -49,13 +50,14 @@ export default function Profile() {
     try {
       const { error } = await supabase.from('dcba_members').update({
         address: editable.residential,
+        office: editable.office,
         mobile: editable.mobile,
         email: editable.email,
       }).eq('id', member.id)
       if (error) throw error
 
       // Update local session
-      signIn({ ...member, address: editable.residential, mobile: editable.mobile, email: editable.email })
+      signIn({ ...member, address: editable.residential, office: editable.office, mobile: editable.mobile, email: editable.email })
       toast.success('Profile updated!')
     } catch (err) {
       toast.error(err.message)
@@ -118,46 +120,32 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Court Allotments — read only */}
+        {/* Allotments — read only, auto from DB */}
         <div className="card p-4">
-          <h3 className="font-bold text-gray-700 text-sm mb-3 uppercase tracking-wide">Court Allotments</h3>
+          <h3 className="font-bold text-gray-700 text-sm mb-3 uppercase tracking-wide">Allotments</h3>
           <div className="space-y-2">
-            {/* Chamber */}
             <div className="flex items-center justify-between py-2 border-b border-gray-50">
               <div className="flex items-center gap-2">
                 <span className="text-lg">🏛️</span>
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">Chamber No.</p>
-                  <p className="text-xs text-gray-500">Allotted by Court Authority</p>
-                </div>
+                <p className="text-xs text-gray-500 font-medium">Chamber No.</p>
               </div>
               <span className={`text-sm font-bold ${member?.chamber ? 'text-blue-700' : 'text-gray-400'}`}>
                 {member?.chamber || 'Not allotted'}
               </span>
             </div>
-
-            {/* Locker */}
             <div className="flex items-center justify-between py-2 border-b border-gray-50">
               <div className="flex items-center gap-2">
                 <span className="text-lg">🔒</span>
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">Locker No.</p>
-                  <p className="text-xs text-gray-500">Allotted by DCBA</p>
-                </div>
+                <p className="text-xs text-gray-500 font-medium">Locker No.</p>
               </div>
               <span className={`text-sm font-bold ${member?.locker_no ? 'text-green-700' : 'text-gray-400'}`}>
                 {member?.locker_no || 'Not allotted'}
               </span>
             </div>
-
-            {/* Seat */}
             <div className="flex items-center justify-between py-2">
               <div className="flex items-center gap-2">
                 <span className="text-lg">🪑</span>
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">Seat</p>
-                  <p className="text-xs text-gray-500">Allotted by DCBA</p>
-                </div>
+                <p className="text-xs text-gray-500 font-medium">Seat No.</p>
               </div>
               <span className={`text-sm font-bold ${member?.seat_no ? 'text-green-700' : 'text-gray-400'}`}>
                 {member?.seat_no
@@ -167,7 +155,7 @@ export default function Profile() {
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-3 text-center">
-            To request allotment — go to <span className="text-blue-600 font-medium">Requests</span> section
+            For allotment requests → go to <span className="text-blue-600 font-medium">Requests</span> section
           </p>
         </div>
 
@@ -188,18 +176,17 @@ export default function Profile() {
             ))}
 
             <div>
+              <label className="label text-xs">Office Address</label>
+              <textarea className="input text-sm h-16 resize-none" value={editable.office}
+                onChange={e => setEditable({ ...editable, office: e.target.value })}
+                placeholder="Office address" />
+            </div>
+
+            <div>
               <label className="label text-xs">Residential Address</label>
               <textarea className="input text-sm h-16 resize-none" value={editable.residential}
                 onChange={e => setEditable({ ...editable, residential: e.target.value })}
                 placeholder="Residential address" />
-            </div>
-
-            {/* Chamber & Office — read-only info */}
-            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-              <p className="text-xs text-gray-400 mb-2 font-medium">Chamber & Office Address</p>
-              <p className="text-xs text-gray-500">{member?.chamber || '—'}</p>
-              {member?.office && <p className="text-xs text-gray-500 mt-1">{member.office}</p>}
-              <p className="text-xs text-blue-500 mt-1">Contact office to update chamber/office address</p>
             </div>
           </div>
 

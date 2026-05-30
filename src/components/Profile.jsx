@@ -21,12 +21,8 @@ export default function Profile() {
   const [photoUrl, setPhotoUrl] = useState(getPhotoUrl(member?.member_no || ''))
   const [editable, setEditable] = useState({
     residential: member?.address || '',
-    chamber: member?.chamber || '',
-    office: member?.office || '',
     mobile: member?.mobile || '',
     email: member?.email || '',
-    locker_no: member?.locker_no || '',
-    seat_no: member?.seat_no || '',
   })
 
   async function handlePhotoUpload(e) {
@@ -53,17 +49,13 @@ export default function Profile() {
     try {
       const { error } = await supabase.from('dcba_members').update({
         address: editable.residential,
-        chamber: editable.chamber,
-        office: editable.office,
         mobile: editable.mobile,
         email: editable.email,
-        locker_no: editable.locker_no,
-        seat_no: editable.seat_no,
       }).eq('id', member.id)
       if (error) throw error
 
       // Update local session
-      signIn({ ...member, ...editable, address: editable.residential })
+      signIn({ ...member, address: editable.residential, mobile: editable.mobile, email: editable.email })
       toast.success('Profile updated!')
     } catch (err) {
       toast.error(err.message)
@@ -126,6 +118,59 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* Court Allotments — read only */}
+        <div className="card p-4">
+          <h3 className="font-bold text-gray-700 text-sm mb-3 uppercase tracking-wide">Court Allotments</h3>
+          <div className="space-y-2">
+            {/* Chamber */}
+            <div className="flex items-center justify-between py-2 border-b border-gray-50">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🏛️</span>
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">Chamber No.</p>
+                  <p className="text-xs text-gray-500">Allotted by Court Authority</p>
+                </div>
+              </div>
+              <span className={`text-sm font-bold ${member?.chamber ? 'text-blue-700' : 'text-gray-400'}`}>
+                {member?.chamber || 'Not allotted'}
+              </span>
+            </div>
+
+            {/* Locker */}
+            <div className="flex items-center justify-between py-2 border-b border-gray-50">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🔒</span>
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">Locker No.</p>
+                  <p className="text-xs text-gray-500">Allotted by DCBA</p>
+                </div>
+              </div>
+              <span className={`text-sm font-bold ${member?.locker_no ? 'text-green-700' : 'text-gray-400'}`}>
+                {member?.locker_no || 'Not allotted'}
+              </span>
+            </div>
+
+            {/* Seat */}
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🪑</span>
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">Seat</p>
+                  <p className="text-xs text-gray-500">Allotted by DCBA</p>
+                </div>
+              </div>
+              <span className={`text-sm font-bold ${member?.seat_no ? 'text-green-700' : 'text-gray-400'}`}>
+                {member?.seat_no
+                  ? `${member.hall_no ? member.hall_no + ' · ' : ''}Seat ${member.seat_no}`
+                  : 'Not allotted'}
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-3 text-center">
+            To request allotment — go to <span className="text-blue-600 font-medium">Requests</span> section
+          </p>
+        </div>
+
         {/* Editable fields */}
         <div className="card p-4">
           <h3 className="font-bold text-gray-700 text-sm mb-3 uppercase tracking-wide">Contact & Address <span className="text-blue-500 font-normal normal-case">(editable)</span></h3>
@@ -149,33 +194,12 @@ export default function Profile() {
                 placeholder="Residential address" />
             </div>
 
-            <div>
-              <label className="label text-xs">Chamber Address / No.</label>
-              <textarea className="input text-sm h-16 resize-none" value={editable.chamber}
-                onChange={e => setEditable({ ...editable, chamber: e.target.value })}
-                placeholder="Chamber no. and address at court" />
-            </div>
-
-            <div>
-              <label className="label text-xs">Office Address</label>
-              <textarea className="input text-sm h-16 resize-none" value={editable.office}
-                onChange={e => setEditable({ ...editable, office: e.target.value })}
-                placeholder="Office address" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label text-xs">Locker No.</label>
-                <input className="input text-sm" value={editable.locker_no}
-                  onChange={e => setEditable({ ...editable, locker_no: e.target.value })}
-                  placeholder="e.g. L-12" />
-              </div>
-              <div>
-                <label className="label text-xs">Seat No.</label>
-                <input className="input text-sm" value={editable.seat_no}
-                  onChange={e => setEditable({ ...editable, seat_no: e.target.value })}
-                  placeholder="e.g. S-45" />
-              </div>
+            {/* Chamber & Office — read-only info */}
+            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+              <p className="text-xs text-gray-400 mb-2 font-medium">Chamber & Office Address</p>
+              <p className="text-xs text-gray-500">{member?.chamber || '—'}</p>
+              {member?.office && <p className="text-xs text-gray-500 mt-1">{member.office}</p>}
+              <p className="text-xs text-blue-500 mt-1">Contact office to update chamber/office address</p>
             </div>
           </div>
 

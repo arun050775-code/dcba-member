@@ -3,9 +3,21 @@ import { useMemberAuth } from '../context/MemberAuthContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Plus, Mail, CreditCard, Sofa, Lock, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Plus, Mail, CreditCard, Sofa, Lock, CheckCircle, Clock, XCircle, AlertCircle, Loader } from 'lucide-react'
 
 const ICARD_FEE = 50
+const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID
+
+function loadRazorpay() {
+  return new Promise(resolve => {
+    if (window.Razorpay) return resolve(true)
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
 
 const REQUEST_TYPES = {
   experience_letter: {
@@ -207,22 +219,73 @@ function NewRequestModal({ member, preSelectedType, onClose, onSuccess }) {
     icard_transaction_ref: '',
   })
   const [saving, setSaving] = useState(false)
+  const [paying, setPaying] = useState(false)
 
   const currentType = REQUEST_TYPES[type]
 
-  async function handleSubmit() {
-    // Validation
-    if (type === 'experience_letter' && !form.el_purpose) return toast.error('Please enter the purpose')
-    if (type === 'icard') {
-      // I-Card fee online payment — transaction ref required for online
-      if (['upi', 'neft'].includes(form.icard_payment_mode) && !form.icard_transaction_ref) {
-        return toast.error('Transaction reference required for online payment')
+  async function handleRazorpayIcard() {
+    if (!RAZORPAY_KEY_ID) return toast.error('Payment gateway not configured')
+    setPaying(true)
+    const loaded = await loadRazorpay()
+    if (!loaded) {
+      toast.error('Failed to load payment gateway')
+      setPaying(false)
+      return
+    }
+
+    const options = {
+      key: RAZORPAY_KEY_ID,
+      amount: ICARD_FEE * 100,
+      currency: 'INR',
+      name: 'Dwarka Court Bar Association',
+      description: 'I-Card Fee',
+      prefill: {
+        name: member.member_name,
+        email: member.email || '',
+        contact: member.mobile || '',
+      },
+      notes: {
+        member_no: member.member_no,
+        member_id: member.id,
+        payment_for: 'icard',
+      },
+      theme: { color: '#1a3a5c' },
+      modal: {
+        ondismiss: () => {
+          setPaying(false)
+          toast('Payment cancelled', { icon: '⚠️' })
+        }
+      },
+      handler: async function(response) {
+        // Payment done — submit request with paid status
+        await submitRequest(true, response.razorpay_payment_id)
       }
     }
 
+    const rzp = new window.Razorpay(options)
+    rzp.on('payment.failed', function(response) {
+      setPaying(false)
+      toast.error(`Payment failed: ${response.error.description}`)
+    })
+    rzp.open()
+    setPaying(false)
+  }
+
+  async function handleSubmit() {
+    if (type === 'icard') {
+      // I-Card always goes through Razorpay
+      await handleRazorpayIcard()
+      return
+    }
+    await submitRequest(false, null)
+  }
+
+  async function submitRequest(icardFeePaid = false, razorpayPaymentId = null) {
+    // Validation
+    if (type === 'experience_letter' && !form.el_purpose) return toast.error('Please enter the purpose')
+
     setSaving(true)
     try {
-      // Generate request number
       const { count } = await supabase.from('dcba_member_requests')
         .select('*', { count: 'exact', head: true }).eq('org_id', member.org_id)
       const requestNo = `DCBA/REQ/${getFY()}/${String((count || 0) + 1).padStart(4, '0')}`
@@ -241,12 +304,10 @@ function NewRequestModal({ member, preSelectedType, onClose, onSuccess }) {
       }
 
       if (type === 'icard') {
-        const feeMode = form.icard_payment_mode
-        const isPaid = ['upi', 'neft'].includes(feeMode) && form.icard_transaction_ref
         payload.icard_fee_amount = ICARD_FEE
-        payload.icard_fee_paid = isPaid
-        payload.icard_payment_mode = feeMode
-        payload.icard_transaction_ref = form.icard_transaction_ref || null
+        payload.icard_fee_paid = icardFeePaid
+        payload.icard_payment_mode = icardFeePaid ? 'online' : 'pending'
+        payload.icard_transaction_ref = razorpayPaymentId || null
       }
 
       if (type === 'seat_allotment' || type === 'locker_allotment') {
@@ -260,6 +321,7 @@ function NewRequestModal({ member, preSelectedType, onClose, onSuccess }) {
       onSuccess()
     } catch (err) {
       toast.error(err.message)
+      setPaying(false)
     }
     setSaving(false)
   }
@@ -309,42 +371,14 @@ function NewRequestModal({ member, preSelectedType, onClose, onSuccess }) {
           {/* I-Card */}
           {type === 'icard' && (
             <div className="space-y-3">
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
-                <p className="text-sm font-semibold text-purple-800">I-Card Fee: ₹{ICARD_FEE}</p>
-                <p className="text-xs text-purple-600 mt-0.5">Pay online now, or pay at office in cash</p>
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
+                <p className="text-sm font-semibold text-purple-800 mb-1">I-Card Fee: ₹{ICARD_FEE}</p>
+                <p className="text-xs text-purple-600">Click "Submit & Pay" below to pay securely via Razorpay</p>
+                <p className="text-xs text-purple-500 mt-1">UPI · Cards · Net Banking — all accepted</p>
               </div>
-
-              <div>
-                <label className="label">Payment Mode</label>
-                <div className="flex gap-2 flex-wrap">
-                  {[
-                    { id: 'cash', label: 'Cash at Office' },
-                    { id: 'upi', label: 'UPI' },
-                    { id: 'neft', label: 'NEFT/IMPS' },
-                  ].map(m => (
-                    <button key={m.id} onClick={() => setForm({ ...form, icard_payment_mode: m.id })}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${form.icard_payment_mode === m.id ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-gray-600 border-gray-200'}`}>
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                <p className="text-xs text-blue-700">✅ Your I-Card request will be submitted immediately after successful payment. I-Card will be issued from DCBA office.</p>
               </div>
-
-              {['upi', 'neft'].includes(form.icard_payment_mode) && (
-                <div>
-                  <label className="label">Transaction Reference No. *</label>
-                  <input className="input font-mono" value={form.icard_transaction_ref}
-                    onChange={e => setForm({ ...form, icard_transaction_ref: e.target.value })}
-                    placeholder={form.icard_payment_mode === 'upi' ? 'UPI Ref No.' : 'NEFT/IMPS Ref No.'} />
-                  <p className="text-xs text-gray-400 mt-1">Payment will be verified by office before processing</p>
-                </div>
-              )}
-
-              {form.icard_payment_mode === 'cash' && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
-                  <p className="text-xs text-yellow-800">⚠️ Please pay ₹{ICARD_FEE} at the DCBA office when collecting the I-Card. Your request will be processed once payment is received.</p>
-                </div>
-              )}
             </div>
           )}
 
@@ -380,9 +414,14 @@ function NewRequestModal({ member, preSelectedType, onClose, onSuccess }) {
             </div>
           </div>
 
-          <button onClick={handleSubmit} disabled={saving}
+          <button onClick={handleSubmit} disabled={saving || paying}
             className="btn-primary w-full py-3 text-base font-bold">
-            {saving ? 'Submitting...' : 'Submit Request'}
+            {(saving || paying)
+              ? <span className="flex items-center justify-center gap-2"><Loader className="w-4 h-4 animate-spin" /> Processing...</span>
+              : type === 'icard'
+                ? `Submit & Pay ₹${ICARD_FEE} via Razorpay`
+                : 'Submit Request'
+            }
           </button>
         </div>
       </div>

@@ -1,23 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useMemberAuth } from '../context/MemberAuthContext'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, IndianRupee, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { ArrowLeft, IndianRupee, CheckCircle, XCircle, Clock, Loader } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import toast from 'react-hot-toast'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const ANNUAL_FEE = 600
-const MONTHLY_RATE = 50
-const FULL_YEAR_MONTHS = 12
+const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID
 
 function formatDate(d) {
   if (!d) return '—'
   const dt = new Date(d)
   return `${String(dt.getDate()).padStart(2,'0')}-${MONTHS[dt.getMonth()]}-${dt.getFullYear()}`
-}
-
-function getMonthsDiff(from, to) {
-  return (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth())
 }
 
 function getNextDueDate(membershipDate) {
@@ -29,26 +24,31 @@ function getNextDueDate(membershipDate) {
   return nextDue
 }
 
-// Compute months accrued since last payment (or membership date if never paid)
-function computeAccrued(member) {
-  const today = new Date()
-  // Use last_fee_paid_date if available, else membership_date
-  const baseDate = member.last_fee_paid_date
-    ? new Date(member.last_fee_paid_date)
-    : member.membership_date
-      ? new Date(member.membership_date)
-      : null
+function getFY() {
+  const now = new Date()
+  return now.getMonth() >= 3
+    ? `${now.getFullYear()}-${String(now.getFullYear() + 1).slice(2)}`
+    : `${now.getFullYear() - 1}-${String(now.getFullYear()).slice(2)}`
+}
 
-  if (!baseDate) return { months: 0, amount: 0 }
-  const months = Math.max(0, getMonthsDiff(baseDate, today))
-  return { months, amount: months * MONTHLY_RATE }
+// Load Razorpay script dynamically
+function loadRazorpay() {
+  return new Promise(resolve => {
+    if (window.Razorpay) return resolve(true)
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
 }
 
 export default function Dues() {
-  const { member } = useMemberAuth()
+  const { member, signIn } = useMemberAuth()
   const navigate = useNavigate()
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
+  const [paying, setPaying] = useState(false)
 
   useEffect(() => { if (member) fetchPayments() }, [member])
 
@@ -65,6 +65,114 @@ export default function Dues() {
   const totalDue = Number(member?.outstanding_fees || 0)
   const hasOutstanding = totalDue > 0
   const nextDueDate = getNextDueDate(member?.membership_date)
+
+  async function handleRazorpay(amount, label) {
+    if (!RAZORPAY_KEY_ID) {
+      toast.error('Payment gateway not configured')
+      return
+    }
+    setPaying(true)
+    const loaded = await loadRazorpay()
+    if (!loaded) {
+      toast.error('Failed to load payment gateway. Check internet connection.')
+      setPaying(false)
+      return
+    }
+
+    // Generate order reference
+    const orderRef = `DCBA-${member.member_no}-${Date.now()}`
+
+    const options = {
+      key: RAZORPAY_KEY_ID,
+      amount: amount * 100, // paise
+      currency: 'INR',
+      name: 'Dwarka Court Bar Association',
+      description: `Annual Subscription — ${label}`,
+      order_id: '', // No server-side order creation needed for Standard Checkout
+      prefill: {
+        name: member.member_name,
+        email: member.email || '',
+        contact: member.mobile || '',
+      },
+      notes: {
+        member_no: member.member_no,
+        member_id: member.id,
+        org_id: member.org_id,
+        payment_for: label,
+        order_ref: orderRef,
+      },
+      theme: { color: '#1a3a5c' },
+      modal: {
+        ondismiss: () => {
+          setPaying(false)
+          toast('Payment cancelled', { icon: '⚠️' })
+        }
+      },
+      handler: async function(response) {
+        // Payment successful
+        await handlePaymentSuccess(response, amount, label)
+      }
+    }
+
+    const rzp = new window.Razorpay(options)
+    rzp.on('payment.failed', function(response) {
+      setPaying(false)
+      toast.error(`Payment failed: ${response.error.description}`)
+    })
+    rzp.open()
+    setPaying(false)
+  }
+
+  async function handlePaymentSuccess(response, amount, label) {
+    setPaying(true)
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const fy = getFY()
+
+      // Get next receipt number
+      const { count } = await supabase.from('dcba_member_fees')
+        .select('*', { count: 'exact', head: true })
+        .eq('member_id', member.id)
+      const receiptNo = `DCBA/ONL/${fy}/${String((count || 0) + 1).padStart(4, '0')}`
+
+      // Record payment in dcba_member_fees
+      const { error: feeError } = await supabase.from('dcba_member_fees').insert({
+        member_id: member.id,
+        org_id: member.org_id,
+        fee_type: 'annual',
+        amount: amount,
+        payment_date: today,
+        payment_mode: 'online',
+        receipt_no: receiptNo,
+        transaction_id: response.razorpay_payment_id,
+        razorpay_payment_id: response.razorpay_payment_id,
+        razorpay_order_id: response.razorpay_order_id || null,
+        razorpay_signature: response.razorpay_signature || null,
+        status: 'completed',
+        description: `Annual Subscription — ${label}`,
+      })
+      if (feeError) throw feeError
+
+      // Update member: clear outstanding, update last paid date
+      const newOutstanding = Math.max(0, totalDue - amount)
+      const { error: memberError } = await supabase.from('dcba_members').update({
+        outstanding_fees: newOutstanding,
+        last_fee_paid_date: today,
+        annual_fee_paid: true,
+      }).eq('id', member.id)
+      if (memberError) throw memberError
+
+      // Update local session
+      signIn({ ...member, outstanding_fees: newOutstanding, last_fee_paid_date: today, annual_fee_paid: true })
+
+      toast.success(`Payment successful! ₹${amount} paid. Receipt: ${receiptNo}`, { duration: 5000 })
+      fetchPayments()
+    } catch (err) {
+      toast.error('Payment recorded but update failed. Please contact office. Ref: ' + response.razorpay_payment_id)
+      console.error(err)
+    }
+    setPaying(false)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -87,7 +195,7 @@ export default function Dues() {
             </div>
             <div>
               <p className="font-bold text-gray-800">
-                {hasOutstanding ? 'Outstanding Dues' : `All dues clear ✓`}
+                {hasOutstanding ? 'Outstanding Dues' : 'All dues clear ✓'}
               </p>
               {hasOutstanding
                 ? <p className="text-2xl font-bold text-red-600">₹{totalDue.toLocaleString('en-IN')}</p>
@@ -96,41 +204,59 @@ export default function Dues() {
             </div>
           </div>
 
-          {/* Accrual info — removed, using database outstanding_fees directly */}
-
-          {/* Payment options - only show if outstanding */}
+          {/* Payment buttons - outstanding */}
           {hasOutstanding && (
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => toast('Online payment coming soon! Please visit office.', { icon: 'ℹ️' })}
-                className="bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold text-center">
-                Pay Outstanding<br />
-                <span className="text-xs font-normal">₹{totalDue.toLocaleString('en-IN')}</span>
-              </button>
-              <button
-                onClick={() => toast('Online payment coming soon! Please visit office.', { icon: 'ℹ️' })}
-                className="bg-[#1a3a5c] text-white rounded-xl py-2.5 text-sm font-semibold text-center">
-                Pay Full Year<br />
-                <span className="text-xs font-normal">₹{ANNUAL_FEE}</span>
-              </button>
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => handleRazorpay(totalDue, 'Outstanding dues')}
+                  disabled={paying}
+                  className="bg-blue-700 text-white rounded-xl py-3 text-sm font-semibold text-center disabled:opacity-60 flex flex-col items-center justify-center gap-0.5">
+                  {paying ? <Loader className="w-4 h-4 animate-spin" /> : <>
+                    <span>Pay Outstanding</span>
+                    <span className="text-xs font-normal">₹{totalDue.toLocaleString('en-IN')}</span>
+                  </>}
+                </button>
+                <button
+                  onClick={() => handleRazorpay(ANNUAL_FEE, 'Annual subscription FY ' + getFY())}
+                  disabled={paying}
+                  className="bg-[#1a3a5c] text-white rounded-xl py-3 text-sm font-semibold text-center disabled:opacity-60 flex flex-col items-center justify-center gap-0.5">
+                  {paying ? <Loader className="w-4 h-4 animate-spin" /> : <>
+                    <span>Pay Full Year</span>
+                    <span className="text-xs font-normal">₹{ANNUAL_FEE}</span>
+                  </>}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 text-center">
+                Secure payment via Razorpay · UPI, Cards, Net Banking accepted
+              </p>
             </div>
           )}
 
-          {/* Advance payment option - only when dues are clear */}
+          {/* Advance payment - when clear */}
           {!hasOutstanding && (
-            <div className="mt-2">
+            <div className="space-y-2">
               <button
-                onClick={() => toast('Online payment coming soon! Please visit office.', { icon: 'ℹ️' })}
-                className="w-full bg-green-600 text-white rounded-xl py-2.5 text-sm font-semibold text-center">
-                Pay in Advance for Next Year<br />
-                <span className="text-xs font-normal">₹{fullYearAmount} — valid till {nextDueDate ? formatDate(new Date(nextDueDate.getFullYear()+1, nextDueDate.getMonth(), nextDueDate.getDate())) : '—'}</span>
+                onClick={() => handleRazorpay(ANNUAL_FEE, 'Advance Annual subscription FY ' + getFY())}
+                disabled={paying}
+                className="w-full bg-green-600 text-white rounded-xl py-3 text-sm font-semibold text-center disabled:opacity-60">
+                {paying
+                  ? <Loader className="w-4 h-4 animate-spin mx-auto" />
+                  : <>
+                    Pay in Advance for Next Year<br />
+                    <span className="text-xs font-normal">
+                      ₹{ANNUAL_FEE} — valid till {nextDueDate
+                        ? formatDate(new Date(nextDueDate.getFullYear() + 1, nextDueDate.getMonth(), nextDueDate.getDate()))
+                        : '—'}
+                    </span>
+                  </>
+                }
               </button>
+              <p className="text-xs text-gray-400 text-center">
+                Secure payment via Razorpay · UPI, Cards, Net Banking accepted
+              </p>
             </div>
           )}
-
-          <p className="text-xs text-gray-400 text-center mt-2">
-            Online payment coming soon — visit DCBA office to pay now
-          </p>
         </div>
 
         {/* Next renewal */}
@@ -163,7 +289,10 @@ export default function Dues() {
             <div key={p.id} className="flex items-center justify-between py-2.5 border-b last:border-0">
               <div>
                 <p className="text-sm font-medium text-gray-800 capitalize">{p.fee_type} fee</p>
-                <p className="text-xs text-gray-400">{formatDate(p.payment_date)} · {p.payment_mode?.toUpperCase()}</p>
+                <p className="text-xs text-gray-400">
+                  {formatDate(p.payment_date)} · {p.payment_mode === 'online' ? '💳 Online' : p.payment_mode?.toUpperCase()}
+                  {p.transaction_id ? ` · ${p.transaction_id}` : ''}
+                </p>
               </div>
               <p className="text-green-600 font-bold text-sm">₹{Number(p.amount).toLocaleString('en-IN')}</p>
             </div>

@@ -183,8 +183,9 @@ export default function Dues() {
       toast.success(`Payment successful! ₹${amount} paid. Receipt: ${receiptNo}`, { duration: 5000 })
       fetchPayments()
     } catch (err) {
-      toast.error('Payment recorded but update failed. Please contact office. Ref: ' + response.razorpay_payment_id)
-      console.error(err)
+      const msg = err?.message || err?.error_description || JSON.stringify(err)
+      toast.error(`Error: ${msg} | Ref: ${response.razorpay_payment_id}`, { duration: 10000 })
+      console.error('Payment update error:', err)
     }
     setPaying(false)
   }

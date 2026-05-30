@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMemberAuth } from '../context/MemberAuthContext'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, IndianRupee, CheckCircle, XCircle, Clock, Loader } from 'lucide-react'
+import { ArrowLeft, IndianRupee, CheckCircle, XCircle, Clock, Loader, Printer, Download } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import toast from 'react-hot-toast'
 
@@ -49,6 +49,7 @@ export default function Dues() {
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
+  const [receipt, setReceipt] = useState(null)
 
   useEffect(() => { if (member) fetchPayments() }, [member])
 
@@ -180,7 +181,18 @@ export default function Dues() {
       // 4. Update local session
       signIn({ ...member, outstanding_fees: newOutstanding, last_fee_paid_date: today, annual_fee_paid: true })
 
-      toast.success(`Payment successful! ₹${amount} paid. Receipt: ${receiptNo}`, { duration: 5000 })
+      // 5. Show receipt
+      setReceipt({
+        receiptNo,
+        date: today,
+        amount,
+        label,
+        razorpayId: response.razorpay_payment_id,
+        memberName: member.member_name,
+        memberNo: member.member_no,
+        enrollmentNo: member.enrollment_no,
+      })
+
       fetchPayments()
     } catch (err) {
       const msg = err?.message || err?.error_description || JSON.stringify(err)
@@ -313,6 +325,140 @@ export default function Dues() {
               <p className="text-green-600 font-bold text-sm">₹{Number(p.amount).toLocaleString('en-IN')}</p>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Receipt Modal */}
+      {receipt && (
+        <OnlineReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
+      )}
+    </div>
+  )
+}
+
+// ---- ONLINE PAYMENT RECEIPT ----
+
+function numberToWords(n) {
+  const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen']
+  const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety']
+  if (n === 0) return 'Zero'
+  if (n < 20) return ones[n]
+  if (n < 100) return tens[Math.floor(n/10)] + (n%10 ? ' ' + ones[n%10] : '')
+  if (n < 1000) return ones[Math.floor(n/100)] + ' Hundred' + (n%100 ? ' ' + numberToWords(n%100) : '')
+  if (n < 100000) return numberToWords(Math.floor(n/1000)) + ' Thousand' + (n%1000 ? ' ' + numberToWords(n%1000) : '')
+  return numberToWords(Math.floor(n/100000)) + ' Lakh' + (n%100000 ? ' ' + numberToWords(n%100000) : '')
+}
+
+function fmtDate(d) {
+  if (!d) return '—'
+  const dt = new Date(d)
+  return `${String(dt.getDate()).padStart(2,'0')}-${MONTHS[dt.getMonth()]}-${dt.getFullYear()}`
+}
+
+function OnlineReceiptModal({ receipt, onClose }) {
+  function handlePrint() {
+    const printContent = document.getElementById('dcba-online-receipt')
+    const w = window.open('', '_blank', 'width=800,height=600')
+    w.document.write(`
+      <html><head><title>Receipt ${receipt.receiptNo}</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #000; }
+        .header { text-align: center; border-bottom: 3px solid #1a3a5c; padding-bottom: 12px; margin-bottom: 16px; }
+        .org-name { font-size: 20px; font-weight: bold; color: #1a3a5c; text-transform: uppercase; }
+        .receipt-title { font-size: 14px; color: #555; margin-top: 4px; }
+        .receipt-no { font-size: 13px; font-weight: bold; color: #c8960c; margin-top: 4px; }
+        .online-badge { display: inline-block; background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; border-radius: 4px; padding: 2px 10px; font-size: 12px; font-weight: bold; margin-top: 4px; }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+        td { padding: 7px 10px; font-size: 13px; border-bottom: 1px solid #eee; }
+        td:first-child { color: #666; width: 45%; }
+        td:last-child { font-weight: bold; }
+        .amount-box { background: #f0f4ff; border: 2px solid #1a3a5c; border-radius: 8px; padding: 12px; text-align: center; margin: 16px 0; }
+        .amount-big { font-size: 28px; font-weight: bold; color: #1a3a5c; }
+        .amount-words { font-size: 12px; color: #555; margin-top: 4px; }
+        .footer { margin-top: 20px; border-top: 2px solid #1a3a5c; padding-top: 12px; font-size: 11px; color: #666; text-align: center; }
+        .ref { font-size: 11px; color: #888; margin-top: 8px; word-break: break-all; }
+        @media print { body { padding: 0; } }
+      </style></head><body>
+      ${printContent.innerHTML}
+      </body></html>
+    `)
+    w.document.close()
+    w.focus()
+    setTimeout(() => { w.print() }, 500)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-green-50 rounded-t-2xl">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-green-600" />
+            <h3 className="font-bold text-green-800">Payment Successful!</h3>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500">✕</button>
+        </div>
+
+        {/* Receipt content — this div is printed */}
+        <div id="dcba-online-receipt" className="px-6 py-4">
+
+          {/* Header */}
+          <div className="header text-center border-b-2 border-blue-900 pb-3 mb-4">
+            <p className="org-name text-lg font-bold text-blue-900 uppercase">Dwarka Court Bar Association</p>
+            <p className="receipt-title text-xs text-gray-500 mt-1">Online Payment Receipt</p>
+            <p className="receipt-no text-sm font-bold text-yellow-600 mt-1">{receipt.receiptNo}</p>
+            <span className="online-badge inline-block bg-green-100 text-green-700 border border-green-300 rounded px-2 py-0.5 text-xs font-bold mt-1">✅ Online Payment — Razorpay</span>
+          </div>
+
+          {/* Member details */}
+          <table className="w-full text-sm mb-3">
+            <tbody>
+              {[
+                ['Date', fmtDate(receipt.date)],
+                ['Member Name', receipt.memberName],
+                ['Member No.', receipt.memberNo],
+                ['Enrollment No.', receipt.enrollmentNo || '—'],
+                ['Payment For', receipt.label],
+                ['Payment Mode', 'Online — Razorpay'],
+              ].map(([label, value]) => (
+                <tr key={label} className="border-b border-gray-100">
+                  <td className="py-1.5 text-gray-500 text-xs">{label}</td>
+                  <td className="py-1.5 font-semibold text-xs text-right">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Amount */}
+          <div className="amount-box bg-blue-50 border-2 border-blue-900 rounded-xl p-4 text-center my-4">
+            <p className="amount-big text-3xl font-bold text-blue-900">₹{Number(receipt.amount).toLocaleString('en-IN')}</p>
+            <p className="amount-words text-xs text-gray-500 mt-1">{numberToWords(receipt.amount)} Rupees Only</p>
+          </div>
+
+          {/* Razorpay ref */}
+          <div className="ref text-center">
+            <p className="text-xs text-gray-400">Razorpay Payment ID</p>
+            <p className="text-xs font-mono text-gray-600">{receipt.razorpayId}</p>
+          </div>
+
+          {/* Footer */}
+          <div className="footer text-center border-t border-gray-200 pt-3 mt-4">
+            <p className="text-xs text-gray-500">This is a computer generated receipt</p>
+            <p className="text-xs text-gray-500">Dwarka Court Bar Association</p>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="px-6 py-4 border-t flex gap-3">
+          <button onClick={handlePrint}
+            className="flex-1 bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2">
+            <Printer className="w-4 h-4" /> Print Receipt
+          </button>
+          <button onClick={onClose}
+            className="flex-1 bg-gray-100 text-gray-700 rounded-xl py-2.5 text-sm font-semibold">
+            Close
+          </button>
         </div>
       </div>
     </div>

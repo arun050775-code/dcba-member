@@ -129,11 +129,8 @@ export default function Dues() {
       const today = new Date().toISOString().split('T')[0]
       const fy = getFY()
 
-      // Get next receipt number
-      const { count } = await supabase.from('dcba_member_fees')
-        .select('*', { count: 'exact', head: true })
-        .eq('member_id', member.id)
-      const receiptNo = `DCBA/ONL/${fy}/${String((count || 0) + 1).padStart(4, '0')}`
+      // Receipt number from timestamp — no DB query needed
+      const receiptNo = `DCBA/ONL/${fy}/${Date.now().toString().slice(-6)}`
 
       // 1. Record in dcba_member_fees
       const { data: feeData, error: feeError } = await supabase.from('dcba_member_fees').insert({

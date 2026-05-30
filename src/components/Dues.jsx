@@ -133,29 +133,6 @@ export default function Dues() {
           </p>
         </div>
 
-        {/* Fee breakdown */}
-        <div className="card p-4">
-          <h3 className="font-bold text-gray-800 mb-3 text-sm">Fee Structure</h3>
-          <div className="space-y-2">
-            {[
-              { label: 'Admission Fee (One-time)', amount: '₹600', paid: member?.admission_fee_paid },
-              { label: 'Annual Subscription (₹50/month)', amount: '₹600/year', paid: member?.annual_fee_paid },
-              { label: 'I-Card Fee (One-time)', amount: '₹50', paid: member?.icard_issued },
-            ].map(f => (
-              <div key={f.label} className="flex items-center justify-between py-2 border-b last:border-0">
-                <div className="flex items-center gap-2">
-                  {f.paid ? <CheckCircle className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-red-400" />}
-                  <span className="text-sm text-gray-700">{f.label}</span>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">{f.amount}</p>
-                  <p className={`text-xs ${f.paid ? 'text-green-600' : 'text-red-500'}`}>{f.paid ? 'Paid' : 'Pending'}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Next renewal */}
         {member?.membership_date && (
           <div className="card p-4 flex items-center gap-3">

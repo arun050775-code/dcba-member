@@ -3,7 +3,7 @@ import { useMemberAuth } from '../context/MemberAuthContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Plus, Mail, CreditCard, Sofa, Lock, CheckCircle, Clock, XCircle, AlertCircle, Loader } from 'lucide-react'
+import { ArrowLeft, Plus, Mail, CreditCard, Sofa, Lock, CheckCircle, Clock, XCircle, AlertCircle, Loader, FileText } from 'lucide-react'
 
 const ICARD_FEE = 50
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID
@@ -35,6 +35,14 @@ const REQUEST_TYPES = {
     iconBg: 'bg-purple-100',
     desc: 'Request a new or replacement I-Card',
     fee: ICARD_FEE,
+  },
+  membership_certificate: {
+    label: 'Membership Certificate',
+    icon: FileText,
+    color: 'bg-teal-50 border-teal-300 text-teal-700',
+    iconBg: 'bg-teal-100',
+    desc: 'Request membership certificate',
+    fee: null,
   },
   seat_allotment: {
     label: 'Seat Allotment',
@@ -101,7 +109,7 @@ export default function MemberRequests() {
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
           <div className="flex items-center justify-between">
-            <h1 className="text-white font-bold text-xl">My Requests</h1>
+            <h1 className="text-white font-bold text-xl">Requests</h1>
             <button onClick={() => { setSelectedType(null); setShowAdd(true) }}
               className="bg-yellow-400 text-blue-900 px-3 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1">
               <Plus className="w-4 h-4" /> New Request

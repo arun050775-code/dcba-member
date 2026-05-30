@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMemberAuth } from '../context/MemberAuthContext'
 import { supabase } from '../supabaseClient'
 import { useNavigate } from 'react-router-dom'
-import { User, IndianRupee, Bell, AlertCircle, FileText, Camera, ClipboardList } from 'lucide-react'
+import { User, IndianRupee, Bell, AlertCircle, FileText, ClipboardList } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getPhotoUrl, handlePhotoError } from '../utils/photoUrl'
 
@@ -30,7 +30,6 @@ export default function Dashboard() {
   const [notices, setNotices] = useState([])
   const [grievances, setGrievances] = useState([])
   const [selectedNotice, setSelectedNotice] = useState(null)
-  const [uploading, setUploading] = useState(false)
   const [photoUrl, setPhotoUrl] = useState(getPhotoUrl(member?.member_no || ''))
 
   useEffect(() => { if (member) fetchData() }, [member])
@@ -52,24 +51,6 @@ export default function Dashboard() {
     setGrievances(grievanceData || [])
   }
 
-  async function handlePhotoUpload(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    if (file.size > 2 * 1024 * 1024) return toast.error('Photo must be under 2MB')
-    setUploading(true)
-    try {
-      const filename = `${member.member_no}.png`
-      const { error } = await supabase.storage.from('member-photos')
-        .upload(filename, file, { upsert: true, contentType: 'image/png' })
-      if (error) throw error
-      setPhotoUrl(`https://xalbjrmridjgdpguobdx.supabase.co/storage/v1/object/public/member-photos/${filename}?t=${Date.now()}`)
-      toast.success('Photo updated!')
-    } catch (err) {
-      toast.error(err.message)
-    }
-    setUploading(false)
-  }
-
   const hasOutstanding = Number(member?.outstanding_fees) > 0
   const nextDue = getNextDueDate(member?.membership_date)
 
@@ -80,14 +61,13 @@ export default function Dashboard() {
     closed: 'bg-gray-100 text-gray-600',
   }
 
+  // Left panel quick links — merged View Profile + Update Contact
   const QUICK_ACTIONS = [
-    { label: 'View Profile', path: '/profile', icon: User, color: 'text-blue-600' },
-    { label: 'Update Contact', path: '/profile', icon: User, color: 'text-blue-600' },
+    { label: 'View & Update Profile', path: '/profile', icon: User, color: 'text-blue-600' },
     { label: 'Dues & Fees', path: '/dues', icon: IndianRupee, color: 'text-green-600' },
-    { label: 'File Grievance', path: '/grievances', icon: AlertCircle, color: 'text-red-600' },
-    { label: 'My Requests', path: '/requests', icon: ClipboardList, color: 'text-orange-600' },
+    { label: 'Requests & Grievances', path: '/grievances', icon: AlertCircle, color: 'text-red-600' },
+    { label: 'Requests', path: '/requests', icon: ClipboardList, color: 'text-orange-600' },
     { label: 'Notice Board', path: '/notices', icon: Bell, color: 'text-yellow-600' },
-    { label: 'Certificate / I-Card', path: '/certificate', icon: FileText, color: 'text-purple-600' },
   ]
 
   return (
@@ -113,21 +93,21 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* News Ticker */}
+      {/* News Ticker — wider */}
       {notices.length > 0 && (
         <div style={{ background: '#C8960C' }} className="overflow-hidden">
-          <div className="flex items-center max-w-5xl mx-auto">
+          <div className="flex items-center w-full">
             <div className="flex-shrink-0 bg-[#1a3a5c] text-white text-xs font-bold px-3 py-1.5 flex items-center gap-1">
               <Bell className="w-3 h-3" /> NOTICES
             </div>
             <div className="overflow-hidden flex-1 px-3">
               <p className="text-xs font-semibold text-[#1a3a5c] whitespace-nowrap"
-                style={{ animation: 'ticker 16.7s linear infinite', display: 'inline-block' }}>
+                style={{ animation: 'ticker 20s linear infinite', display: 'inline-block' }}>
                 {notices.map((n, i) => (
                   <span key={n.id}>
                     <span className="cursor-pointer hover:underline" onClick={() => setSelectedNotice(n)}>
                       {n.is_pinned ? '📌 ' : '• '}{n.title}
-                      <span className="font-normal"> — Click here to view full notice</span>
+                      <span className="font-normal"> — Click to view</span>
                     </span>
                     {i < notices.length - 1 ? '     ◆     ' : ''}
                   </span>
@@ -140,16 +120,16 @@ export default function Dashboard() {
 
       <style>{`
         @keyframes ticker {
-          0% { transform: translateX(100%); }
+          0% { transform: translateX(100vw); }
           100% { transform: translateX(-100%); }
         }
       `}</style>
 
-      {/* Status Bar — maroon */}
+      {/* Status Bar */}
       <div style={{ background: '#8B0000' }} className="px-4 py-3">
         <div className="max-w-5xl mx-auto flex items-center gap-6 flex-wrap">
           <div className="text-white text-xs">
-            <span className="text-red-300">Membership Status: </span>
+            <span className="text-red-300">Status: </span>
             <span className="font-bold text-green-300">Active</span>
           </div>
           <div className="text-white text-xs">
@@ -182,7 +162,7 @@ export default function Dashboard() {
 
             {/* Profile card */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 text-center">
-              <div className="relative w-20 h-20 mx-auto mb-3">
+              <div className="relative w-20 h-20 mx-auto mb-1">
                 <div className="w-20 h-20 rounded-full overflow-hidden border-3 border-yellow-400 shadow-md">
                   <img src={photoUrl} alt={member?.member_name}
                     className="w-full h-full object-cover"
@@ -226,21 +206,20 @@ export default function Dashboard() {
                   </p>
                   <button onClick={() => navigate('/dues')}
                     className="text-xs bg-red-600 text-white px-3 py-1 rounded-lg font-medium">
-                    View →
+                    Pay Now →
                   </button>
                 </div>
               )}
             </div>
 
-            {/* Action Cards */}
+            {/* Action Cards — Certificate merged into Requests */}
             <div className="grid grid-cols-3 gap-3">
               {[
                 { label: 'My Profile', desc: 'View & update details', icon: User, path: '/profile', color: 'bg-blue-50 border-blue-200 text-blue-700' },
                 { label: 'Dues & Fees', desc: 'Check & pay fees', icon: IndianRupee, path: '/dues', color: 'bg-green-50 border-green-200 text-green-700' },
-                { label: 'Grievances', desc: 'File & track', icon: AlertCircle, path: '/grievances', color: 'bg-red-50 border-red-200 text-red-700' },
-                { label: 'Requests', desc: 'Letter, I-Card, Seat...', icon: ClipboardList, path: '/requests', color: 'bg-orange-50 border-orange-200 text-orange-700' },
+                { label: 'Requests & Grievances', desc: 'File & track', icon: AlertCircle, path: '/grievances', color: 'bg-red-50 border-red-200 text-red-700' },
+                { label: 'Requests', desc: 'Letter, I-Card, Seat, Certificate...', icon: ClipboardList, path: '/requests', color: 'bg-orange-50 border-orange-200 text-orange-700' },
                 { label: 'Notice Board', desc: 'Circulars & notices', icon: Bell, path: '/notices', color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
-                { label: 'Certificate', desc: 'Request certificate', icon: FileText, path: '/certificate', color: 'bg-purple-50 border-purple-200 text-purple-700' },
               ].map(item => {
                 const Icon = item.icon
                 return (
@@ -272,7 +251,7 @@ export default function Dashboard() {
                   <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-800">{n.title}</p>
-                    <p className="text-xs text-blue-500">Click here to view full notice</p>
+                    <p className="text-xs text-blue-500">Click to view full notice</p>
                     <p className="text-xs text-gray-400 mt-0.5">{formatDate(n.created_at)}</p>
                   </div>
                   {n.is_pinned && <span className="text-xs flex-shrink-0">📌</span>}

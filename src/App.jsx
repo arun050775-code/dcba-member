@@ -30,6 +30,7 @@ function AppRoutes() {
       <Route path="/dues" element={<PrivateRoute><Dues /></PrivateRoute>} />
       <Route path="/grievances" element={<PrivateRoute><MemberGrievances /></PrivateRoute>} />
       <Route path="/requests" element={<PrivateRoute><MemberRequests /></PrivateRoute>} />
+      <Route path="/certificate" element={<Navigate to="/requests" replace />} />
       <Route path="/notices" element={<PrivateRoute><MemberNotices /></PrivateRoute>} />
       <Route path="/certificate" element={<PrivateRoute><Certificate /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />

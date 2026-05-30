@@ -83,7 +83,7 @@ export default function MemberGrievances() {
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
           <div className="flex items-center justify-between">
-            <h1 className="text-white font-bold text-xl">My Grievances</h1>
+            <h1 className="text-white font-bold text-xl">Requests & Grievances</h1>
             <button onClick={() => setShowAdd(true)}
               className="bg-yellow-400 text-blue-900 px-3 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1">
               <Plus className="w-4 h-4" /> New

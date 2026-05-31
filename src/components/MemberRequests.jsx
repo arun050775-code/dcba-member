@@ -425,19 +425,17 @@ function NewRequestModal({ member, preSelectedType, onClose, onSuccess }) {
                 </p>
               </div>
 
-              {/* Essay / Justification */}
+              {/* Essay / Application */}
               <div>
-                <label className="label">
-                  Application / Justification *
-                </label>
+                <label className="label">Application *</label>
                 <textarea
                   className="input resize-none text-sm leading-relaxed"
                   style={{ height: '180px' }}
                   value={form.preferred_location}
                   onChange={e => setForm({ ...form, preferred_location: e.target.value })}
                   placeholder={type === 'seat_allotment'
-                    ? `Write your application explaining why you need a seat at ${''} Bar Association. Mention how frequently you appear in this court, the nature of your practice, and why a seat would help you serve your clients better...`
-                    : `Write your application explaining why you need a locker at this Bar Association. Mention how frequently you visit, the volume of case files you need to store, and how a locker would benefit your practice...`}
+                    ? `Write your application to the Bar Association explaining why you need a seat. Mention how frequently you appear in this court, the nature of your practice, and why a seat would benefit your work...`
+                    : `Write your application to the Bar Association explaining why you need a locker. Mention how frequently you visit this court, the volume of case files you need to store, and how a locker would benefit your practice...`}
                 />
                 <div className="flex justify-between mt-1">
                   <p className="text-xs text-gray-400">Be specific — the committee reviews each application</p>

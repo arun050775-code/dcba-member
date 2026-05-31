@@ -188,7 +188,11 @@ export default function MemberRequests() {
                     </p>
                   )}
                   {(r.request_type === 'seat_allotment' || r.request_type === 'locker_allotment') && r.preferred_location && (
-                    <p className="text-xs text-gray-500 mt-1">Preference: {r.preferred_location}</p>
+                    <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                      <p className="text-xs text-gray-400 font-medium mb-1">Application:</p>
+                      <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">{r.preferred_location}</p>
+                      <p className="text-xs text-gray-400 mt-1">{r.preferred_location.trim().split(/\s+/).filter(Boolean).length} words</p>
+                    </div>
                   )}
 
                   {/* Admin remarks */}
@@ -420,11 +424,32 @@ function NewRequestModal({ member, preSelectedType, onClose, onSuccess }) {
                     : '🔒 Locker allotment is subject to availability. Security deposit will be required at the time of allotment.'}
                 </p>
               </div>
+
+              {/* Essay / Justification */}
               <div>
-                <label className="label">Location Preference (optional)</label>
-                <input className="input" value={form.preferred_location}
+                <label className="label">
+                  Application / Justification *
+                </label>
+                <textarea
+                  className="input resize-none text-sm leading-relaxed"
+                  style={{ height: '180px' }}
+                  value={form.preferred_location}
                   onChange={e => setForm({ ...form, preferred_location: e.target.value })}
-                  placeholder={type === 'seat_allotment' ? 'e.g. Hall 1, near entrance...' : 'e.g. Ground floor, Row A...'} />
+                  placeholder={type === 'seat_allotment'
+                    ? `Write your application explaining why you need a seat at ${''} Bar Association. Mention how frequently you appear in this court, the nature of your practice, and why a seat would help you serve your clients better...`
+                    : `Write your application explaining why you need a locker at this Bar Association. Mention how frequently you visit, the volume of case files you need to store, and how a locker would benefit your practice...`}
+                />
+                <div className="flex justify-between mt-1">
+                  <p className="text-xs text-gray-400">Be specific — the committee reviews each application</p>
+                  <p className={`text-xs font-medium ${
+                    (() => {
+                      const wc = form.preferred_location.trim().split(/\s+/).filter(Boolean).length
+                      return wc < 50 ? 'text-red-400' : wc < 150 ? 'text-orange-400' : 'text-green-600'
+                    })()
+                  }`}>
+                    {form.preferred_location.trim().split(/\s+/).filter(Boolean).length} words
+                  </p>
+                </div>
               </div>
             </div>
           )}

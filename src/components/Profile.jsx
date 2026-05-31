@@ -112,12 +112,12 @@ export default function Profile() {
           </h3>
           <div className="space-y-0">
             {[
-              { label: 'Member No.', value: member?.member_no, icon: Hash },
-              { label: 'Father/Husband Name', value: member?.father_name, icon: User },
-              { label: 'Enrollment No.', value: member?.enrollment_no, icon: Hash },
-              { label: 'Membership Date', value: formatDate(member?.membership_date), icon: Calendar },
-              { label: 'Date of Birth', value: member?.dob ? formatDate(member?.dob) : '—', icon: Calendar },
-            ].map(([label, value]) => (
+              { label: 'Member No.', value: member?.member_no },
+              { label: 'Father/Husband Name', value: member?.father_name },
+              { label: 'Enrollment No.', value: member?.enrollment_no },
+              { label: 'Membership Date', value: formatDate(member?.membership_date) },
+              { label: 'Date of Birth', value: member?.dob ? formatDate(member?.dob) : '—' },
+            ].map(({ label, value }) => (
               <div key={label} className="flex justify-between items-center py-2.5 border-b border-gray-50 last:border-0">
                 <span className="text-xs text-gray-400 font-medium">{label}</span>
                 <span className="text-sm font-semibold text-gray-700">{value || '—'}</span>

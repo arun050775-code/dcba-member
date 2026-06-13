@@ -3,7 +3,7 @@ import { useMemberAuth } from '../context/MemberAuthContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Plus, Mail, CreditCard, Sofa, Lock, CheckCircle, Clock, XCircle, AlertCircle, Loader, FileText } from 'lucide-react'
+import { ArrowLeft, Plus, Mail, CreditCard, Sofa, Lock, CheckCircle, Clock, XCircle, AlertCircle, Loader, FileText, Car, Upload } from 'lucide-react'
 
 const ICARD_FEE = 50
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID
@@ -42,6 +42,14 @@ const REQUEST_TYPES = {
     color: 'bg-teal-50 border-teal-300 text-teal-700',
     iconBg: 'bg-teal-100',
     desc: 'Request membership certificate',
+    fee: null,
+  },
+  vehicle_pass: {
+    label: 'Vehicle Pass',
+    icon: Car,
+    color: 'bg-red-50 border-red-300 text-red-700',
+    iconBg: 'bg-red-100',
+    desc: 'Apply for vehicle parking pass at court complex',
     fee: null,
   },
   seat_allotment: {
@@ -187,6 +195,11 @@ export default function MemberRequests() {
                       Fee: ₹{r.icard_fee_amount} · {r.icard_fee_paid ? '✅ Paid' : '⏳ Payment pending'}
                     </p>
                   )}
+                  {r.request_type === 'vehicle_pass' && (
+                    <div className="mt-1 text-xs text-gray-500">
+                      {r.vehicle_type} · {r.vehicle_make} · {r.vehicle_no}
+                    </div>
+                  )}
                   {(r.request_type === 'seat_allotment' || r.request_type === 'locker_allotment') && r.preferred_location && (
                     <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
                       <p className="text-xs text-gray-400 font-medium mb-1">Application:</p>
@@ -229,6 +242,14 @@ function NewRequestModal({ member, preSelectedType, onClose, onSuccess }) {
     preferred_location: '',
     icard_payment_mode: 'cash',
     icard_transaction_ref: '',
+    // Vehicle pass fields
+    vehicle_type: 'Car',
+    vehicle_make: '',
+    vehicle_no: '',
+    registered_owner: '',
+    owner_relationship: '',
+    rc_file: null,
+    rc_preview: null,
   })
   const [saving, setSaving] = useState(false)
   const [paying, setPaying] = useState(false)
@@ -295,6 +316,11 @@ function NewRequestModal({ member, preSelectedType, onClose, onSuccess }) {
   async function submitRequest(icardFeePaid = false, razorpayPaymentId = null) {
     // Validation
     if (type === 'experience_letter' && !form.el_purpose) return toast.error('Please enter the purpose')
+    if (type === 'vehicle_pass') {
+      if (!form.vehicle_make) return toast.error('Vehicle make/brand required')
+      if (!form.vehicle_no) return toast.error('Vehicle number required')
+      if (!form.registered_owner) return toast.error('Registered owner name required')
+    }
 
     setSaving(true)
     try {
@@ -324,6 +350,14 @@ function NewRequestModal({ member, preSelectedType, onClose, onSuccess }) {
 
       if (type === 'seat_allotment' || type === 'locker_allotment') {
         payload.preferred_location = form.preferred_location || null
+      }
+
+      if (type === 'vehicle_pass') {
+        payload.vehicle_type = form.vehicle_type
+        payload.vehicle_make = form.vehicle_make
+        payload.vehicle_no = form.vehicle_no
+        payload.registered_owner = form.registered_owner
+        payload.owner_relationship = form.owner_relationship
       }
 
       const { error } = await supabase.from('dcba_member_requests').insert(payload)
@@ -415,7 +449,98 @@ function NewRequestModal({ member, preSelectedType, onClose, onSuccess }) {
           )}
 
           {/* Seat / Locker Allotment */}
-          {(type === 'seat_allotment' || type === 'locker_allotment') && (
+          {type === 'vehicle_pass' && (
+            <div className="space-y-3">
+              <div className={`rounded-xl border p-3 text-sm ${REQUEST_TYPES.vehicle_pass.color}`}>
+                <p className="font-semibold">🚗 Vehicle pass is subject to approval by DCBA. Upload RC copy for verification.</p>
+              </div>
+
+              {/* Auto-filled from member */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm">
+                <p className="text-xs text-gray-400 font-medium mb-1">Auto-filled from your profile:</p>
+                <p className="font-medium">{member.member_name} &nbsp;·&nbsp; {member.member_no} &nbsp;·&nbsp; {member.mobile}</p>
+              </div>
+
+              {/* Vehicle Type */}
+              <div>
+                <label className="label">Vehicle Type *</label>
+                <div className="flex gap-3">
+                  {['Car', 'Two Wheeler'].map(vt => (
+                    <label key={vt} className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="vehicle_type" value={vt}
+                        checked={form.vehicle_type === vt}
+                        onChange={() => setForm({ ...form, vehicle_type: vt })} />
+                      <span className="text-sm font-medium">{vt}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Make / Brand *</label>
+                <input className="input" value={form.vehicle_make}
+                  onChange={e => setForm({ ...form, vehicle_make: e.target.value })}
+                  placeholder="e.g. MARUTI SWIFT, HONDA ACTIVA" />
+              </div>
+
+              <div>
+                <label className="label">Vehicle Number *</label>
+                <input className="input" value={form.vehicle_no}
+                  onChange={e => setForm({ ...form, vehicle_no: e.target.value })}
+                  placeholder="e.g. DL 4C AB 1234" />
+              </div>
+
+              <div>
+                <label className="label">Name of Registered Owner *</label>
+                <input className="input" value={form.registered_owner}
+                  onChange={e => setForm({ ...form, registered_owner: e.target.value })}
+                  placeholder="As per RC" />
+              </div>
+
+              <div>
+                <label className="label">Relationship with Registered Owner <span className="text-gray-400 font-normal">(if vehicle not in your name)</span></label>
+                <input className="input" value={form.owner_relationship}
+                  onChange={e => setForm({ ...form, owner_relationship: e.target.value })}
+                  placeholder="e.g. SELF, SPOUSE, FATHER" />
+              </div>
+
+              {/* RC Upload */}
+              <div>
+                <label className="label">Upload RC Copy *</label>
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center">
+                  {form.rc_preview ? (
+                    <div>
+                      <img src={form.rc_preview} alt="RC" className="max-h-32 mx-auto rounded-lg mb-2" />
+                      <p className="text-xs text-green-600 font-medium">✅ RC uploaded</p>
+                      <label className="text-xs text-blue-600 cursor-pointer underline">
+                        Change
+                        <input type="file" accept="image/*,application/pdf" className="hidden"
+                          onChange={e => {
+                            const file = e.target.files[0]
+                            if (file) {
+                              setForm({ ...form, rc_file: file, rc_preview: URL.createObjectURL(file) })
+                            }
+                          }} />
+                      </label>
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer">
+                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">Tap to upload RC copy</p>
+                      <p className="text-xs text-gray-400">JPG, PNG or PDF</p>
+                      <input type="file" accept="image/*,application/pdf" className="hidden"
+                        onChange={e => {
+                          const file = e.target.files[0]
+                          if (file) {
+                            setForm({ ...form, rc_file: file, rc_preview: URL.createObjectURL(file) })
+                          }
+                        }} />
+                    </label>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
             <div className="space-y-3">
               <div className={`rounded-xl border p-3 text-sm ${REQUEST_TYPES[type].color}`}>
                 <p className="font-semibold">

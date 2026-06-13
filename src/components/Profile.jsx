@@ -49,14 +49,12 @@ export default function Profile() {
     setSaving(true)
     try {
       const { error } = await supabase.from('dcba_members').update({
-        address: editable.residential,
-        office: editable.office,
         mobile: editable.mobile,
         email: editable.email,
       }).eq('id', member.id)
       if (error) throw error
-      signIn({ ...member, address: editable.residential, office: editable.office, mobile: editable.mobile, email: editable.email })
-      toast.success('Profile updated!')
+      signIn({ ...member, mobile: editable.mobile, email: editable.email })
+      toast.success('Contact details updated!')
     } catch (err) {
       toast.error(err.message)
     }
@@ -167,7 +165,7 @@ export default function Profile() {
         {/* Editable fields */}
         <div className="card p-4">
           <h3 className="font-bold text-gray-700 text-sm mb-3 uppercase tracking-wide flex items-center gap-2">
-            <Phone className="w-4 h-4 text-green-600" /> Contact & Address
+            <Phone className="w-4 h-4 text-green-600" /> Contact Details
             <span className="text-blue-500 font-normal normal-case text-xs ml-1">(editable)</span>
           </h3>
           <div className="space-y-3">
@@ -179,21 +177,22 @@ export default function Profile() {
             </div>
             <div>
               <label className="label text-xs flex items-center gap-1"><Mail className="w-3 h-3" /> Email</label>
-              <input className="input text-sm" value={editable.email}
+              <input type="email" className="input text-sm" value={editable.email}
                 onChange={e => setEditable({ ...editable, email: e.target.value })}
                 placeholder="email@example.com" />
             </div>
+            {/* Addresses — read-only, change via DCBA office */}
             <div>
-              <label className="label text-xs flex items-center gap-1"><MapPin className="w-3 h-3" /> Office Address</label>
-              <textarea className="input text-sm h-16 resize-none" value={editable.office}
-                onChange={e => setEditable({ ...editable, office: e.target.value })}
-                placeholder="Office address" />
+              <label className="label text-xs flex items-center gap-1"><MapPin className="w-3 h-3" /> Office Address <span className="text-gray-400">(contact office to update)</span></label>
+              <div className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-600 min-h-10 uppercase">
+                {member?.office || '—'}
+              </div>
             </div>
             <div>
-              <label className="label text-xs flex items-center gap-1"><MapPin className="w-3 h-3" /> Residential Address</label>
-              <textarea className="input text-sm h-16 resize-none" value={editable.residential}
-                onChange={e => setEditable({ ...editable, residential: e.target.value })}
-                placeholder="Residential address" />
+              <label className="label text-xs flex items-center gap-1"><MapPin className="w-3 h-3" /> Residential Address <span className="text-gray-400">(contact office to update)</span></label>
+              <div className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-600 min-h-10 uppercase">
+                {member?.address || '—'}
+              </div>
             </div>
           </div>
           <button onClick={handleSave} disabled={saving}

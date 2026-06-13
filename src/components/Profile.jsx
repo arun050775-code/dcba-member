@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMemberAuth } from '../context/MemberAuthContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
@@ -62,6 +62,20 @@ export default function Profile() {
   }
 
   const hasAllotments = member?.chamber || member?.locker_no || member?.seat_no
+  const [icardApproved, setIcardApproved] = useState(false)
+
+  useEffect(() => { checkICard() }, [member])
+
+  async function checkICard() {
+    if (!member?.id) return
+    const { data } = await supabase.from('dcba_member_requests')
+      .select('id, icard_status')
+      .eq('org_id', member.org_id)
+      .eq('request_type', 'icard')
+      .eq('status', 'approved')
+      .limit(1)
+    setIcardApproved(data && data.length > 0)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -123,6 +137,52 @@ export default function Profile() {
             ))}
           </div>
         </div>
+
+        {/* I-Card — show if approved */}
+        {icardApproved && (
+          <div className="card p-4">
+            <h3 className="font-bold text-gray-700 text-sm mb-3 uppercase tracking-wide flex items-center gap-2">
+              🪪 Digital I-Card
+            </h3>
+            {/* Front */}
+            <div className="border-2 border-gray-200 rounded-xl overflow-hidden mb-2">
+              <div className="bg-[#1a3a5c] text-white px-3 py-2">
+                <p className="font-bold text-xs">DWARKA COURT BAR ASSOCIATION (REGD.)</p>
+                <p className="text-xs text-blue-300">Dwarka Court Complex, Sector-10, New Delhi-110 075</p>
+              </div>
+              <div className="flex p-3 gap-3">
+                <img src={photoUrl} alt={member?.member_name}
+                  className="w-14 h-18 object-cover border border-gray-200 rounded flex-shrink-0 bg-gray-100"
+                  style={{ height: '72px' }}
+                  onError={e => handlePhotoError(e, member?.member_no, member?.member_name?.split(' ').map(n=>n[0]).join('').slice(0,2))} />
+                <div>
+                  <p className="font-bold text-[#1a3a5c] text-sm">{member?.member_name}</p>
+                  <p className="text-xs text-gray-500 mb-2">Advocate</p>
+                  <p className="text-xs">Membership No.: <strong>{member?.member_no}</strong></p>
+                  <p className="text-xs">Enrollment No.: <strong>{member?.enrollment_no || '—'}</strong></p>
+                </div>
+              </div>
+              <div className="bg-[#c8960c] px-3 py-1 flex justify-between text-xs text-[#1a3a5c] font-semibold">
+                <span>AVNISH RANA · President</span>
+                <span>KARAN VEER TYAGI · Secy.</span>
+              </div>
+            </div>
+            {/* Back */}
+            <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
+              <div className="bg-[#1a3a5c] text-[#c8960c] px-3 py-1 text-xs font-bold">IDENTITY CARD</div>
+              <div className="p-3 space-y-1 text-xs">
+                <div className="flex gap-2"><span className="text-gray-400 w-20">Address:</span><span className="font-medium uppercase">{member?.address || '—'}</span></div>
+                <div className="flex gap-2"><span className="text-gray-400 w-20">Office:</span><span className="font-medium uppercase">{member?.office || member?.chamber || '—'}</span></div>
+                <div className="flex gap-2"><span className="text-gray-400 w-20">Mobile:</span><span className="font-medium">{member?.mobile || '—'}</span></div>
+                <div className="flex gap-2"><span className="text-gray-400 w-20">Blood Group:</span><span className="font-medium">{member?.blood_group || '—'}</span></div>
+              </div>
+              <div className="border-t border-gray-100 px-3 py-1 text-xs text-gray-400 text-right">
+                Identity Card No.: {member?.member_no}
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 text-center mt-2">Valid while membership is active</p>
+          </div>
+        )}
 
         {/* Allotments — only if assigned */}
         {hasAllotments && (

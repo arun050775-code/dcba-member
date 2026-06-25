@@ -6,7 +6,7 @@ import { User, IndianRupee, Bell, AlertCircle, FileText, ClipboardList } from 'l
 import toast from 'react-hot-toast'
 import { getPhotoUrl, handlePhotoError } from '../utils/photoUrl'
 
-const DCBA_LOGO = 'https://www.dwarkacourtbarassociation.com/images/logo.png'
+const DCBA_LOGO = 'https://xalbjrmridjgdpguobdx.supabase.co/storage/v1/object/public/assets/dcba-logo.jpg'
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 function formatDate(d) {

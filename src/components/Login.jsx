@@ -4,7 +4,7 @@ import { useMemberAuth } from '../context/MemberAuthContext'
 import toast from 'react-hot-toast'
 import { User, Calendar, Phone } from 'lucide-react'
 
-const DCBA_LOGO = 'https://www.dwarkacourtbarassociation.com/images/logo.png'
+const DCBA_LOGO = 'https://xalbjrmridjgdpguobdx.supabase.co/storage/v1/object/public/assets/dcba-logo.jpg'
 const ORG_ID = 'f77ac673-9060-40be-be29-5a238b5c9f3b'
 
 const COMMITTEE = [
@@ -28,12 +28,11 @@ function getInitials(name) {
 }
 
 function standardizeMemberNo(input) {
-  // Convert A-1 to A-0001, A-95 to A-0095 etc.
-  const match = input.trim().toUpperCase().match(/^([A-Z])-(\d+)$/)
-  if (match) {
-    return `${match[1]}-${match[2].padStart(4, '0')}`
-  }
-  return input.trim().toUpperCase()
+  // Keep member no as-is — A-3 stays A-3, remove leading zeros if typed
+  const clean = input.trim().toUpperCase()
+  const match = clean.match(/^([A-Z]+)-0*(\d+)([A-Z]?)$/)
+  if (match) return `${match[1]}-${match[2]}${match[3]}`
+  return clean
 }
 
 export default function Login() {

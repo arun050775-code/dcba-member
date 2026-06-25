@@ -4,7 +4,7 @@ import { useMemberAuth } from '../context/MemberAuthContext'
 import toast from 'react-hot-toast'
 import { User, Calendar, Phone } from 'lucide-react'
 
-const DCBA_LOGO = 'https://xalbjrmridjgdpguobdx.supabase.co/storage/v1/object/public/assets/dcba-logo.jpg'
+const DCBA_LOGO = 'https://xalbjrmridjgdpguobdx.supabase.co/storage/v1/object/public/assets/dcba-logo.jpeg'
 const ORG_ID = 'f77ac673-9060-40be-be29-5a238b5c9f3b'
 
 const COMMITTEE = [
